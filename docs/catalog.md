@@ -1,6 +1,6 @@
 # Catalog data (plugins & themes)
 
-All catalog cards in **Open tools** are driven by one file:
+All catalog cards in **Manage tools** are driven by one file:
 
 `src/data/catalog/catalog.json`
 

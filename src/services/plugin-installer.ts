@@ -1,9 +1,12 @@
 import { normalizePath, type App } from 'obsidian';
 import type { InstallResult, PluginReleaseAssets } from '../types';
-import {
-	getCommunityPluginsPath,
-	getPluginsPath,
-} from './vault-paths';
+import { getCommunityPluginsPath, getPluginsPath } from './vault-paths';
+
+export {
+	enableInstalledCommunityPlugin,
+	isCommunityPluginEnabled,
+	registerInstalledPluginWithObsidian,
+} from './plugin-runtime';
 
 async function adapterExists(app: App, targetPath: string): Promise<boolean> {
 	return app.vault.adapter.exists(normalizePath(targetPath));
@@ -159,34 +162,6 @@ export async function resolvePluginDirectoryForCatalogId(
 	}
 
 	return directIsDir ? directPath : null;
-}
-
-export async function enableCommunityPlugin(
-	app: App,
-	pluginId: string,
-): Promise<void> {
-	const filePath = getCommunityPluginsPath(app);
-	let list: string[] = [];
-	if (await adapterExists(app, filePath)) {
-		const raw = (await readTextFile(app, filePath)).trim();
-		if (raw.length > 0) {
-			const parsed = JSON.parse(raw) as unknown;
-			if (
-				!Array.isArray(parsed) ||
-				!parsed.every((item): item is string => typeof item === 'string')
-			) {
-				throw new Error(
-					'Invalid community-plugins.json: expected a JSON array of plugin id strings.',
-				);
-			}
-			list = [...parsed];
-		}
-	}
-	if (list.includes(pluginId)) {
-		return;
-	}
-	list.push(pluginId);
-	await writeTextFile(app, filePath, `${JSON.stringify(list, null, 2)}\n`);
 }
 
 export async function installOrUpdatePlugin(

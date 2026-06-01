@@ -34,11 +34,11 @@ Install this plugin with **[BRAT](https://github.com/TfTHacker/obsidian42-brat)*
 
 ## Use
 
-1. Run **Open tools** (ribbon **package** icon or command palette).
+1. Run **Manage tools** (ribbon **package** icon or command palette).
 2. Enter your platform email and select **Send login code**. You will receive a 6-digit one-time code by email.
 3. Enter the code to sign in. Open **Plugins** or **Themes** to install or update the Santi Younger products linked to your account (reload if prompted).
 
-When signed in, catalog plugins auto-update shortly after Obsidian loads. Use **Check for updates** in the panel anytime.
+When signed in, catalog plugins auto-update shortly after Obsidian loads. After you install catalog plugins or themes, use **Check for plugin updates** or **Check for theme updates** in the command palette, or use **Check for updates** in the panel.
 
 ## Support
 

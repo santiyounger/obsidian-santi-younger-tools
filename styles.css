@@ -108,14 +108,56 @@
 	font-size: var(--font-ui-small);
 }
 
+.santi-tools-loading-panel {
+	display: flex;
+	flex: 1 1 auto;
+	align-items: center;
+	justify-content: center;
+	min-height: min(20rem, 55vh);
+}
+
 .santi-tools-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	padding: var(--size-4-6);
+}
+
+.santi-tools-load-target {
+	position: relative;
+}
+
+.santi-tools-loading-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: inherit;
+	pointer-events: all;
+}
+
+.santi-tools-loading-overlay::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: var(--background-primary);
+	opacity: 0.78;
+}
+
+.santi-tools-loading-indicator {
+	position: relative;
+	z-index: 1;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: var(--size-4-3);
-	min-height: 12rem;
-	padding: var(--size-4-6);
+	gap: var(--size-4-2);
+	padding: var(--size-4-4);
+	text-align: center;
 	color: var(--text-muted);
 }
 
@@ -123,17 +165,23 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	border-radius: 50%;
+	background: var(--background-modifier-hover);
+	color: var(--interactive-accent);
 }
 
 .santi-tools-loading-icon svg {
-	width: 2rem;
-	height: 2rem;
+	width: 1.35rem;
+	height: 1.35rem;
 	animation: santi-tools-spin 0.85s linear infinite;
 }
 
 .santi-tools-loading-text {
 	margin: 0;
 	font-size: var(--font-ui-small);
+	line-height: var(--line-height-normal);
 }
 
 /* Tab row: Obsidian core styles .horizontal-tab-header / .horizontal-tab-nav-item */
@@ -168,6 +216,112 @@
 	border-radius: var(--radius-m);
 	overflow: hidden;
 	background: var(--background-secondary);
+}
+
+.santi-catalog-card--focus {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.santi-catalog-card--busy {
+	position: relative;
+}
+
+.santi-tools-action-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.santi-tools-install-hint {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--size-4-2);
+	margin: 0 0 var(--size-4-3);
+	padding: var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	line-height: var(--line-height-normal);
+}
+
+.santi-tools-install-hint-icon {
+	display: flex;
+	flex-shrink: 0;
+	margin-top: 0.1em;
+	color: var(--interactive-accent);
+}
+
+.santi-tools-install-hint-icon svg {
+	width: var(--icon-m);
+	height: var(--icon-m);
+}
+
+.santi-tools-install-hint-text {
+	margin: 0;
+}
+
+.modal.santi-enable-prompt-modal {
+	max-width: min(28rem, 92vw);
+}
+
+.santi-tools-panel.santi-tools-load-target {
+	min-height: min(12rem, 40vh);
+}
+
+.santi-enable-prompt-content.santi-tools-load-target {
+	min-height: 12rem;
+}
+
+.santi-enable-prompt-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 3rem;
+	height: 3rem;
+	margin: 0 auto var(--size-4-3);
+	border-radius: 50%;
+	background: var(--background-modifier-hover);
+	color: var(--interactive-accent);
+}
+
+.santi-enable-prompt-icon svg {
+	width: 1.5rem;
+	height: 1.5rem;
+}
+
+.santi-enable-prompt-lead,
+.santi-enable-prompt-question,
+.santi-enable-prompt-hint {
+	margin: 0;
+	text-align: center;
+	line-height: var(--line-height-normal);
+}
+
+.santi-enable-prompt-lead {
+	font-size: var(--font-ui-medium);
+}
+
+.santi-enable-prompt-question {
+	margin-top: var(--size-4-2);
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-semibold);
+}
+
+.santi-enable-prompt-hint {
+	margin-top: var(--size-4-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.santi-enable-prompt-actions {
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	margin-top: var(--size-4-4);
 }
 
 .santi-catalog-preview {
@@ -252,6 +406,13 @@
 	line-height: var(--line-height-normal);
 }
 
+/* Dev-only: class is never applied in production builds. */
+.santi-dev-email-blur {
+	filter: blur(6px);
+	user-select: none;
+	-webkit-user-select: none;
+}
+
 .santi-tools-account-heading {
 	margin: 0 0 var(--size-4-2);
 	font-size: var(--font-ui-large);
@@ -262,10 +423,6 @@
 	margin: 0;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
-}
-
-.santi-tools-button-loading svg {
-	animation: santi-tools-spin 0.85s linear infinite;
 }
 
 @keyframes santi-tools-spin {

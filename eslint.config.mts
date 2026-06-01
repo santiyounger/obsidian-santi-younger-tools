@@ -19,6 +19,7 @@ export default tseslint.config(
 		languageOptions: {
 			globals: {
 				...globals.browser,
+				__SANTI_DEV__: 'readonly',
 			},
 			parserOptions: {
 				projectService: {

@@ -1,5 +1,8 @@
 import { Notice, Plugin } from 'obsidian';
+import { registerCommands } from './commands/register-commands';
 import { DEFAULT_PLATFORM_BASE_URL } from './common/default-platform-url';
+import { getCatalogEntries } from './services/catalog-data';
+import { getInstallVisibilityFlags } from './services/install-visibility';
 import { PlatformService } from './services/platform';
 import { PluginManager } from './services/plugin-manager';
 import type { PluginDataState } from './types';
@@ -9,6 +12,8 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 	data!: PluginDataState;
 	platform!: PlatformService;
 	manager!: PluginManager;
+	hasInstalledCatalogPlugins = false;
+	hasInstalledCatalogThemes = false;
 
 	async onload(): Promise<void> {
 		await this.loadPluginData();
@@ -35,44 +40,44 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 				await this.savePluginData();
 			},
 			() => this.data.platformSession,
+			() => {
+				void this.refreshInstallCommandVisibility();
+			},
 		);
 
-		this.addRibbonIcon('package', 'Open tools', () => {
+		registerCommands(this);
+
+		this.addRibbonIcon('package', 'Manage tools', () => {
 			openSantiToolsModal(this);
 		});
 
-		this.addCommand({
-			id: 'open-tools',
-			name: 'Open tools',
-			callback: () => {
-				openSantiToolsModal(this);
-			},
-		});
+		void this.refreshInstallCommandVisibility();
 
-		this.addCommand({
-			id: 'check-plugin-updates',
-			name: 'Check catalog plugin updates',
-			callback: () => {
-				if (!this.data.platformSession) {
-					new Notice('Sign in via open tools before checking for updates.');
-					openSantiToolsModal(this);
-					return;
-				}
-				void this.manager.checkUpdates().then((updates) => {
-					const count = updates.filter((u) => u.updateAvailable).length;
-					new Notice(
-						count > 0
-							? `${count} catalog plugin update(s) available. Open tools to install.`
-							: 'All catalog plugins are up to date.',
-					);
-					openSantiToolsModal(this);
-				});
-			},
+		this.registerObsidianProtocolHandler('santi-younger-tools', (params) => {
+			const raw = params.plugin ?? params.pluginId ?? params.id;
+			const pluginId = typeof raw === 'string' ? raw.trim() : '';
+			if (!pluginId) {
+				new Notice('Choose a plugin on the platform, then select install again.');
+				openSantiToolsModal(this);
+				return;
+			}
+			if (!getCatalogEntries().some((entry) => entry.id === pluginId)) {
+				new Notice('That plugin is not in the catalog yet.');
+				openSantiToolsModal(this);
+				return;
+			}
+			openSantiToolsModal(this, { pluginId, tab: 'plugins' });
 		});
 
 		if (this.data.platformSession) {
 			void this.scheduleCatalogAutoUpdateOnLoad();
 		}
+	}
+
+	async refreshInstallCommandVisibility(): Promise<void> {
+		const flags = await getInstallVisibilityFlags(this.app, this.manager);
+		this.hasInstalledCatalogPlugins = flags.hasInstalledCatalogPlugins;
+		this.hasInstalledCatalogThemes = flags.hasInstalledCatalogThemes;
 	}
 
 	/** After reload, refresh entitlements then install pending catalog plugin updates. */
@@ -85,6 +90,7 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 					/* keep last known grants */
 				}
 				await this.manager.applyPendingCatalogUpdatesOnLoad();
+				await this.refreshInstallCommandVisibility();
 			})();
 		}, 3000);
 		this.register(() => window.clearTimeout(timer));

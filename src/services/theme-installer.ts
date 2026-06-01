@@ -1,4 +1,5 @@
 import { normalizePath, type App } from 'obsidian';
+import { isUpdateAvailable } from '../common/versioning';
 import type { ThemeInstallResult, ThemeStatusInfo } from '../types';
 import royalLuxManifest from '../data/themes/royal-lux/manifest.json';
 import royalLuxThemeCss from '../data/themes/royal-lux/theme.css';
@@ -116,6 +117,17 @@ export async function getRoyalLuxThemeStatus(
 		availableVersion: bundledRoyalLux.version,
 		...(installedVersion ? { installedVersion } : {}),
 	};
+}
+
+/** Count of installed catalog themes with a newer bundled version available. */
+export async function countCatalogThemeUpdatesAvailable(app: App): Promise<number> {
+	const status = await getRoyalLuxThemeStatus(app);
+	if (!status.installedVersion) {
+		return 0;
+	}
+	return isUpdateAvailable(status.installedVersion, status.availableVersion)
+		? 1
+		: 0;
 }
 
 export async function installObsidianTheme(

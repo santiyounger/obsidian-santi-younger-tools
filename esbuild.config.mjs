@@ -14,6 +14,9 @@ const context = await esbuild.context({
 	banner: {
 		js: banner,
 	},
+	define: {
+		__SANTI_DEV__: prod ? 'false' : 'true',
+	},
 	entryPoints: ['src/main.ts'],
 	bundle: true,
 	loader: {

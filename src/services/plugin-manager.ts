@@ -15,8 +15,9 @@ import {
 } from './catalog-data';
 import { fetchPluginAssets } from './catalog-fetch';
 import {
-	enableCommunityPlugin,
+	enableInstalledCommunityPlugin,
 	installOrUpdatePlugin,
+	registerInstalledPluginWithObsidian,
 	removePlugin,
 	resolvePluginDirectoryForCatalogId,
 } from './plugin-installer';
@@ -31,7 +32,12 @@ export class PluginManager {
 		private getState: () => PluginDataState,
 		private saveState: (state: PluginDataState) => Promise<void>,
 		private getSession: () => PlatformSessionState | undefined,
+		private onInstallLayoutChange?: () => void,
 	) {}
+
+	private notifyInstallLayoutChange(): void {
+		this.onInstallLayoutChange?.();
+	}
 
 	private requireLoggedIn(): void {
 		if (!this.getSession()) {
@@ -99,7 +105,10 @@ export class PluginManager {
 		return userHasPluginEntitlement(entry, session.grantedPluginIds);
 	}
 
-	async installPlugin(pluginId: string): Promise<InstallResult> {
+	async installPlugin(
+		pluginId: string,
+		options?: { enable?: boolean },
+	): Promise<InstallResult> {
 		this.requireLoggedIn();
 		const catalog = getCatalogEntries();
 		const entry = catalog.find((item) => item.id === pluginId);
@@ -129,19 +138,22 @@ export class PluginManager {
 		let result = await installOrUpdatePlugin(this.app, release);
 		if (result.success) {
 			try {
-				await enableCommunityPlugin(this.app, result.pluginId);
-				result = {
-					...result,
-					message:
-						'Plugin installed. Reload Obsidian to start using it.',
-				};
-			} catch (error) {
-				const detail =
-					error instanceof Error ? error.message : String(error);
-				result = {
-					...result,
-					message: `${result.message} Could not enable it automatically (${detail}). Enable it under Settings → Community plugins.`,
-				};
+				await registerInstalledPluginWithObsidian(
+					this.app,
+					result.pluginId,
+				);
+			} catch {
+				/* files are on disk; registration can retry from the enable prompt */
+			}
+			if (options?.enable) {
+				try {
+					await enableInstalledCommunityPlugin(
+						this.app,
+						result.pluginId,
+					);
+				} catch {
+					/* install succeeded; enable is optional */
+				}
 			}
 			const state = this.getState();
 			const nextInstalls = state.installs.filter(
@@ -157,6 +169,7 @@ export class PluginManager {
 				installs: nextInstalls,
 				lastCheckedAt: new Date().toISOString(),
 			});
+			this.notifyInstallLayoutChange();
 		}
 		return result;
 	}
@@ -174,6 +187,7 @@ export class PluginManager {
 			...state,
 			installs: state.installs.filter((i) => i.pluginId !== pluginId),
 		});
+		this.notifyInstallLayoutChange();
 	}
 
 	async checkUpdates(): Promise<PluginUpdateInfo[]> {

@@ -27,20 +27,42 @@ import {
 	installObsidianTheme,
 	removeRoyalLuxTheme,
 } from '../services/theme-installer';
+import { isCommunityPluginEnabled } from '../services/plugin-runtime';
+import type { InstallResult } from '../types';
+import { InstallEnablePromptModal } from './install-enable-prompt-modal';
+import { applyDevEmailBlur } from './dev-email-blur';
+import { renderLoadingIndicator, renderLoadingOverlay } from './loading-indicator';
 
 type ToolsTab = 'plugins' | 'themes' | 'account';
 
+export interface OpenSantiToolsOptions {
+	pluginId?: string;
+	tab?: ToolsTab;
+}
+
 export class SantiToolsModal extends Modal {
 	private activeTab: ToolsTab = 'account';
+	private pendingPluginId?: string;
+	private focusCardEl?: HTMLElement;
 	private panelLoading = false;
-	private busy = false;
+	private busyKey: string | null = null;
 	private emailInput = '';
 	private codeInput = '';
 	private hasSentLoginCode = false;
 	private updates: PluginUpdateInfo[] = [];
 
-	constructor(private plugin: SantiObsidianToolsPlugin) {
+	constructor(
+		private plugin: SantiObsidianToolsPlugin,
+		options?: OpenSantiToolsOptions,
+	) {
 		super(plugin.app);
+		if (options?.tab) {
+			this.activeTab = options.tab;
+		}
+		if (options?.pluginId) {
+			this.pendingPluginId = options.pluginId;
+			this.activeTab = 'plugins';
+		}
 	}
 
 	private getModalContainerEl(): HTMLElement {
@@ -52,7 +74,11 @@ export class SantiToolsModal extends Modal {
 		this.modalEl.addClass('santi-tools-modal');
 		this.getModalContainerEl().addClass('santi-tools-modal-container');
 		this.contentEl.empty();
-		this.activeTab = this.isLoggedIn() ? 'plugins' : 'account';
+		if (!this.pendingPluginId) {
+			this.activeTab = this.isLoggedIn() ? 'plugins' : 'account';
+		} else if (!this.isLoggedIn()) {
+			this.activeTab = 'account';
+		}
 		void this.refreshAndRender();
 	}
 
@@ -60,6 +86,7 @@ export class SantiToolsModal extends Modal {
 		this.getModalContainerEl().removeClass('santi-tools-modal-container');
 		this.modalEl.removeClass('santi-tools-modal');
 		this.contentEl.empty();
+		void this.plugin.refreshInstallCommandVisibility();
 	}
 
 	private isLoggedIn(): boolean {
@@ -107,11 +134,61 @@ export class SantiToolsModal extends Modal {
 		new Notice(message, isError ? 8000 : 5000);
 	}
 
-	private async runBusy(task: () => Promise<void>): Promise<void> {
-		if (this.busy) {
+	private async handlePluginInstallResult(
+		entry: PluginCatalogEntry,
+		result: InstallResult,
+	): Promise<void> {
+		if (!result.success) {
+			this.showNotice(result.message, true);
 			return;
 		}
-		this.busy = true;
+
+		this.pendingPluginId = undefined;
+		this.showNotice(result.message);
+		await this.refreshUpdates();
+
+		const enabled = await isCommunityPluginEnabled(
+			this.app,
+			result.pluginId,
+		);
+		if (enabled) {
+			return;
+		}
+
+		new InstallEnablePromptModal(
+			this.app,
+			entry.name,
+			result.pluginId,
+		).open();
+	}
+
+	private scrollToFocusedCard(): void {
+		if (!this.focusCardEl) {
+			return;
+		}
+		window.requestAnimationFrame(() => {
+			this.focusCardEl?.scrollIntoView({
+				behavior: 'smooth',
+				block: 'nearest',
+			});
+		});
+	}
+
+	private isBusy(key?: string): boolean {
+		if (key === undefined) {
+			return this.busyKey !== null;
+		}
+		return this.busyKey === key;
+	}
+
+	private async runBusy(
+		key: string,
+		task: () => Promise<void>,
+	): Promise<void> {
+		if (this.busyKey) {
+			return;
+		}
+		this.busyKey = key;
 		await this.render();
 		try {
 			await task();
@@ -120,42 +197,46 @@ export class SantiToolsModal extends Modal {
 				error instanceof Error ? error.message : String(error);
 			this.showNotice(message, true);
 		} finally {
-			this.busy = false;
+			this.busyKey = null;
 			await this.render();
+			void this.plugin.refreshInstallCommandVisibility();
 		}
 	}
 
-	private applySignInButtonLoading(
-		button: ButtonComponent,
-		loading: boolean,
-		idleText: string,
-		loadingText: string,
-		canActivateWhenIdle: boolean,
+	private createActionButton(
+		parent: HTMLElement,
+		options: {
+			idleText: string;
+			cls?: string;
+			onClick: () => void | Promise<void>;
+		},
+	): HTMLButtonElement {
+		const btn = parent.createEl('button', {
+			cls: ['santi-tools-action-btn', options.cls ?? ''].filter(Boolean).join(' '),
+			text: options.idleText,
+		});
+		btn.setAttribute('type', 'button');
+		btn.disabled = this.isBusy();
+		btn.addEventListener('click', () => {
+			void options.onClick();
+		});
+		return btn;
+	}
+
+	private maybeRenderPanelBusyOverlay(
+		parent: HTMLElement,
+		text: string | null,
 	): void {
-		const { buttonEl } = button;
-		if (loading) {
-			button.setButtonText(loadingText);
-			button.setIcon('loader-circle');
-			buttonEl.addClass('santi-tools-button-loading');
-			button.setDisabled(true);
+		if (!text) {
 			return;
 		}
-		buttonEl.removeClass('santi-tools-button-loading');
-		button.setButtonText(idleText);
-		button.setDisabled(!canActivateWhenIdle);
+		renderLoadingOverlay(parent, text);
 	}
 
 	private renderPanelLoading(parent: HTMLElement): void {
-		const wrap = parent.createDiv({ cls: 'santi-tools-loading' });
-		const icon = wrap.createSpan({
-			cls: 'santi-tools-loading-icon',
-			attr: { 'aria-hidden': 'true' },
-		});
-		setIcon(icon, 'loader-circle');
-		wrap.createEl('p', {
-			cls: 'santi-tools-loading-text',
-			text: 'Loading…',
-		});
+		parent.addClass('santi-tools-loading-panel');
+		const center = parent.createDiv({ cls: 'santi-tools-loading' });
+		renderLoadingIndicator(center, 'Loading…');
 	}
 
 	private async render(): Promise<void> {
@@ -163,7 +244,7 @@ export class SantiToolsModal extends Modal {
 		contentEl.empty();
 		contentEl.addClass('santi-tools');
 
-		if (this.panelLoading || this.busy) {
+		if (this.panelLoading) {
 			this.renderPanelLoading(contentEl);
 			return;
 		}
@@ -197,6 +278,7 @@ export class SantiToolsModal extends Modal {
 		const panel = contentEl.createDiv({ cls: panelClass });
 		if (this.activeTab === 'plugins') {
 			await this.renderPluginsPanel(panel);
+			this.scrollToFocusedCard();
 		} else if (this.activeTab === 'themes') {
 			await this.renderThemesPanel(panel);
 		} else {
@@ -267,35 +349,47 @@ export class SantiToolsModal extends Modal {
 	private async renderPluginsPanel(parent: HTMLElement): Promise<void> {
 		const pendingUpdates = this.updates.filter((u) => u.updateAvailable);
 		const toolbar = parent.createDiv({ cls: 'santi-tools-toolbar' });
+		const pendingEntry = this.pendingPluginId
+			? getCatalogEntries().find((entry) => entry.id === this.pendingPluginId)
+			: undefined;
+
+		if (pendingEntry) {
+			const hint = parent.createDiv({ cls: 'santi-tools-install-hint' });
+			const icon = hint.createSpan({
+				cls: 'santi-tools-install-hint-icon',
+				attr: { 'aria-hidden': 'true' },
+			});
+			setIcon(icon, 'download');
+			const text = hint.createSpan({ cls: 'santi-tools-install-hint-text' });
+			text.setText(`Ready to add ${pendingEntry.name}. Select `);
+			text.createEl('strong', { text: 'Install plugin' });
+			text.appendText(' on the card below.');
+		}
 
 		if (pendingUpdates.length > 0) {
-			const updateAllBtn = toolbar.createEl('button', {
+			this.createActionButton(toolbar, {
 				cls: 'mod-cta',
-				text: 'Update all',
-			});
-			updateAllBtn.setAttribute('type', 'button');
-			updateAllBtn.disabled = this.busy;
-			updateAllBtn.addEventListener('click', () => {
-				void this.runBusy(async () => {
-					await this.plugin.manager.updateAllWithNotices();
-					await this.refreshUpdates();
-				});
+				idleText: 'Update all',
+				onClick: () =>
+					this.runBusy('update-all', async () => {
+						await this.plugin.manager.updateAllWithNotices();
+						await this.refreshUpdates();
+					}),
 			});
 		}
 
-		const checkBtn = toolbar.createEl('button', { text: 'Check for updates' });
-		checkBtn.setAttribute('type', 'button');
-		checkBtn.disabled = this.busy;
-		checkBtn.addEventListener('click', () => {
-			void this.runBusy(async () => {
-				this.updates = await this.plugin.manager.checkUpdates();
-				const count = this.updates.filter((u) => u.updateAvailable).length;
-				this.showNotice(
-					count > 0
-						? `${count} update(s) available.`
-						: 'All catalog plugins are up to date.',
-				);
-			});
+		this.createActionButton(toolbar, {
+			idleText: 'Check for updates',
+			onClick: () =>
+				this.runBusy('check-updates', async () => {
+					this.updates = await this.plugin.manager.checkUpdates();
+					const count = this.updates.filter((u) => u.updateAvailable).length;
+					this.showNotice(
+						count > 0
+							? `${count} update(s) available.`
+							: 'All catalog plugins are up to date.',
+					);
+				}),
 		});
 
 		const grid = parent.createDiv({ cls: 'santi-catalog-grid' });
@@ -303,6 +397,7 @@ export class SantiToolsModal extends Modal {
 		const installedIds = new Set(installed.map((p) => p.pluginId));
 		const catalog = getCatalogEntries();
 		let visibleCount = 0;
+		this.focusCardEl = undefined;
 
 		for (const entry of catalog) {
 			if (!this.plugin.manager.shouldShowCatalogEntry(entry, installedIds)) {
@@ -323,6 +418,15 @@ export class SantiToolsModal extends Modal {
 				text: 'No plugins in your catalog yet. Refresh access on the my account tab.',
 			});
 		}
+
+		this.maybeRenderPanelBusyOverlay(
+			parent,
+			this.isBusy('update-all')
+				? 'Updating all…'
+				: this.isBusy('check-updates')
+					? 'Checking for updates…'
+					: null,
+		);
 	}
 
 	private renderPluginCard(
@@ -330,7 +434,14 @@ export class SantiToolsModal extends Modal {
 		entry: PluginCatalogEntry,
 		installed: Array<{ pluginId: string; installedVersion: string }>,
 	): void {
+		const installBusyKey = `install-plugin:${entry.id}`;
+		const removeBusyKey = `remove-plugin:${entry.id}`;
+
 		const card = parent.createDiv({ cls: 'santi-catalog-card' });
+		if (entry.id === this.pendingPluginId) {
+			card.addClass('santi-catalog-card--focus');
+			this.focusCardEl = card;
+		}
 
 		if (entry.previewImageUrl) {
 			const preview = card.createDiv({ cls: 'santi-catalog-preview' });
@@ -354,6 +465,7 @@ export class SantiToolsModal extends Modal {
 		const installedInfo = installed.find((p) => p.pluginId === entry.id);
 		const update = this.updates.find((u) => u.pluginId === entry.id);
 		const isComingSoon = isComingSoonCatalogPlugin(entry);
+		const isUpdateAvailable = Boolean(update?.updateAvailable);
 
 		if (installedInfo?.installedVersion) {
 			body.createEl('p', {
@@ -365,20 +477,15 @@ export class SantiToolsModal extends Modal {
 		const actions = body.createDiv({ cls: 'santi-catalog-actions' });
 
 		if (installedInfo) {
-			const isUpdateAvailable = Boolean(update?.updateAvailable);
 			if (isUpdateAvailable) {
-				const updateBtn = actions.createEl('button', {
+				this.createActionButton(actions, {
 					cls: 'mod-cta',
-					text: this.busy ? 'Updating…' : 'Update',
-				});
-				updateBtn.setAttribute('type', 'button');
-				updateBtn.disabled = this.busy;
-				updateBtn.addEventListener('click', () => {
-					void this.runBusy(async () => {
-						const result = await this.plugin.manager.installPlugin(entry.id);
-						this.showNotice(result.message, !result.success);
-						await this.refreshUpdates();
-					});
+					idleText: 'Update',
+					onClick: () =>
+						this.runBusy(installBusyKey, async () => {
+							const result = await this.plugin.manager.installPlugin(entry.id);
+							await this.handlePluginInstallResult(entry, result);
+						}),
 				});
 			} else {
 				const installedLabel = actions.createDiv({
@@ -406,19 +513,27 @@ export class SantiToolsModal extends Modal {
 			soonBtn.setAttribute('type', 'button');
 			soonBtn.disabled = true;
 		} else {
-			const installBtn = actions.createEl('button', {
+			this.createActionButton(actions, {
 				cls: 'mod-cta',
-				text: this.busy ? 'Installing…' : 'Install',
+				idleText: 'Install plugin',
+				onClick: () =>
+					this.runBusy(installBusyKey, async () => {
+						const result = await this.plugin.manager.installPlugin(entry.id);
+						await this.handlePluginInstallResult(entry, result);
+					}),
 			});
-			installBtn.setAttribute('type', 'button');
-			installBtn.disabled = this.busy;
-			installBtn.addEventListener('click', () => {
-				void this.runBusy(async () => {
-					const result = await this.plugin.manager.installPlugin(entry.id);
-					this.showNotice(result.message, !result.success);
-					await this.refreshUpdates();
-				});
-			});
+		}
+
+		const cardBusyText = this.isBusy(installBusyKey)
+			? isUpdateAvailable
+				? 'Updating…'
+				: 'Installing…'
+			: this.isBusy(removeBusyKey)
+				? 'Removing…'
+				: null;
+		if (cardBusyText) {
+			card.addClass('santi-catalog-card--busy');
+			renderLoadingOverlay(card, cardBusyText);
 		}
 	}
 
@@ -426,10 +541,11 @@ export class SantiToolsModal extends Modal {
 		event: MouseEvent,
 		entry: PluginCatalogEntry,
 	): void {
+		const removeBusyKey = `remove-plugin:${entry.id}`;
 		const menu = new Menu();
 		menu.addItem((item) => {
 			item.setTitle('Check for updates').onClick(() => {
-				void this.runBusy(async () => {
+				void this.runBusy('check-updates', async () => {
 					this.updates = await this.plugin.manager.checkUpdates();
 					this.showNotice('Update check finished.');
 				});
@@ -440,7 +556,7 @@ export class SantiToolsModal extends Modal {
 				.setTitle('Remove')
 				.setWarning(true)
 				.onClick(() => {
-					void this.runBusy(async () => {
+					void this.runBusy(removeBusyKey, async () => {
 						await this.plugin.manager.removeCatalogPlugin(entry.id);
 						this.showNotice(`${entry.name} removed from this vault.`);
 						await this.refreshUpdates();
@@ -476,6 +592,9 @@ export class SantiToolsModal extends Modal {
 		theme: ThemeCatalogEntry,
 		status: ThemeStatusInfo,
 	): Promise<void> {
+		const installBusyKey = `install-theme:${theme.id}`;
+		const removeBusyKey = `remove-theme:${theme.id}`;
+
 		const themeCard = parent.createDiv({ cls: 'santi-catalog-card' });
 
 		if (theme.previewImageUrl) {
@@ -523,31 +642,43 @@ export class SantiToolsModal extends Modal {
 				this.showThemeActionsMenu(event, theme.name);
 			});
 		} else {
-			const installBtn = actions.createEl('button', {
+			this.createActionButton(actions, {
 				cls: 'mod-cta',
-				text: this.busy ? 'Installing…' : 'Install',
+				idleText: 'Install',
+				onClick: () =>
+					this.runBusy(installBusyKey, async () => {
+						const assets = getBundledRoyalLuxAssets();
+						const result = await installObsidianTheme(
+							this.app,
+							assets.manifestJson,
+							assets.themeCss,
+						);
+						this.showNotice(result.message, !result.success);
+					}),
 			});
-			installBtn.setAttribute('type', 'button');
-			installBtn.disabled = this.busy;
-			installBtn.addEventListener('click', () => {
-				void this.runBusy(async () => {
-					const assets = getBundledRoyalLuxAssets();
-					const result = await installObsidianTheme(
-						this.app,
-						assets.manifestJson,
-						assets.themeCss,
-					);
-					this.showNotice(result.message, !result.success);
-				});
-			});
+		}
+
+		const cardBusyText = this.isBusy(installBusyKey)
+			? status.installedVersion
+				? 'Reinstalling…'
+				: 'Installing…'
+			: this.isBusy(removeBusyKey)
+				? 'Removing…'
+				: null;
+		if (cardBusyText) {
+			themeCard.addClass('santi-catalog-card--busy');
+			renderLoadingOverlay(themeCard, cardBusyText);
 		}
 	}
 
 	private showThemeActionsMenu(event: MouseEvent, themeName: string): void {
+		const themeId = ROYAL_LUX_ENTITLEMENT_ID;
+		const installBusyKey = `install-theme:${themeId}`;
+		const removeBusyKey = `remove-theme:${themeId}`;
 		const menu = new Menu();
 		menu.addItem((item) => {
 			item.setTitle('Reinstall').onClick(() => {
-				void this.runBusy(async () => {
+				void this.runBusy(installBusyKey, async () => {
 					const assets = getBundledRoyalLuxAssets();
 					const result = await installObsidianTheme(
 						this.app,
@@ -563,7 +694,7 @@ export class SantiToolsModal extends Modal {
 				.setTitle('Remove')
 				.setWarning(true)
 				.onClick(() => {
-					void this.runBusy(async () => {
+					void this.runBusy(removeBusyKey, async () => {
 						await removeRoyalLuxTheme(this.app);
 						this.showNotice(`${themeName} removed from this vault.`);
 					});
@@ -625,13 +756,9 @@ export class SantiToolsModal extends Modal {
 			if (!sendLoginButton) {
 				return;
 			}
-			this.applySignInButtonLoading(
-				sendLoginButton,
-				this.busy,
-				'Send login code',
-				'Sending code…',
-				Boolean(this.emailInput.trim()),
-			);
+			sendLoginButton
+				.setButtonText('Send login code')
+				.setDisabled(!this.emailInput.trim() || this.isBusy());
 		};
 
 		new Setting(parent)
@@ -639,7 +766,8 @@ export class SantiToolsModal extends Modal {
 			.setDesc('Same address as your purchase.')
 			.addText((text) => {
 				text.inputEl.addClass('santi-tools-sign-in-input');
-				text.setDisabled(this.busy);
+				text.setDisabled(this.isBusy());
+				applyDevEmailBlur(text.inputEl);
 				text
 					.setPlaceholder('you@example.com')
 					.setValue(this.emailInput)
@@ -653,6 +781,7 @@ export class SantiToolsModal extends Modal {
 							this.codeInput = '';
 						}
 						this.emailInput = value;
+						applyDevEmailBlur(text.inputEl);
 						syncSendLoginButton();
 					});
 			});
@@ -666,7 +795,7 @@ export class SantiToolsModal extends Modal {
 					if (!email) {
 						return;
 					}
-					void this.runBusy(async () => {
+					void this.runBusy('sign-in-send', async () => {
 						const result = await this.plugin.platform.sendMagicLink(email);
 						this.hasSentLoginCode = true;
 						this.showNotice(result.message, !result.success);
@@ -686,20 +815,31 @@ export class SantiToolsModal extends Modal {
 				.setName('6-digit code')
 				.addText((text) => {
 					text.inputEl.addClass('santi-tools-sign-in-input');
-					text.setDisabled(this.busy);
+					text.setDisabled(this.isBusy());
 					text
 						.setPlaceholder('123456')
 						.setValue(this.codeInput)
 						.onChange((value) => {
 							this.codeInput = value;
 							if (/^\d{6}$/.test(value.trim())) {
-								void this.runBusy(() => this.verifyLoginCode());
+								void this.runBusy('sign-in-verify', () =>
+								this.verifyLoginCode(),
+							);
 							}
 						});
 				});
 
 			this.appendSignInContactLink(parent);
 		}
+
+		this.maybeRenderPanelBusyOverlay(
+			parent,
+			this.isBusy('sign-in-send')
+				? 'Sending code…'
+				: this.isBusy('sign-in-verify')
+					? 'Verifying code…'
+					: null,
+		);
 	}
 
 	private async renderAccountPanel(parent: HTMLElement): Promise<void> {
@@ -710,16 +850,20 @@ export class SantiToolsModal extends Modal {
 		}
 
 		const welcome = connection.displayName || connection.email || 'there';
-		parent.createEl('h2', {
+		const heading = parent.createEl('h2', {
 			cls: 'santi-tools-account-heading',
 			text: `Welcome, ${welcome}`,
 		});
+		if (connection.email && welcome === connection.email) {
+			applyDevEmailBlur(heading);
+		}
 
 		if (connection.email) {
-			parent.createEl('p', {
+			const emailLine = parent.createEl('p', {
 				cls: 'santi-tools-sign-in-desc',
 				text: connection.email,
 			});
+			applyDevEmailBlur(emailLine);
 		}
 		if (connection.lastSyncedAt) {
 			parent.createEl('p', {
@@ -736,9 +880,9 @@ export class SantiToolsModal extends Modal {
 			button
 				.setButtonText('Refresh access')
 				.setCta()
-				.setDisabled(this.busy)
+				.setDisabled(this.isBusy())
 				.onClick(() => {
-					void this.runBusy(async () => {
+					void this.runBusy('refresh-access', async () => {
 						await this.plugin.platform.refreshEntitlements();
 						this.showNotice('Access refreshed.');
 					});
@@ -746,19 +890,34 @@ export class SantiToolsModal extends Modal {
 		});
 
 		new Setting(parent).addButton((button) => {
-			button.setButtonText('Log out').onClick(() => {
-				void this.runBusy(async () => {
-					await this.plugin.platform.logout();
-					this.hasSentLoginCode = false;
-					this.codeInput = '';
-					this.activeTab = 'account';
-					this.showNotice('Logged out.');
+			button
+				.setButtonText('Log out')
+				.setDisabled(this.isBusy())
+				.onClick(() => {
+					void this.runBusy('logout', async () => {
+						await this.plugin.platform.logout();
+						this.hasSentLoginCode = false;
+						this.codeInput = '';
+						this.activeTab = 'account';
+						this.showNotice('Logged out.');
+					});
 				});
-			});
 		});
+
+		this.maybeRenderPanelBusyOverlay(
+			parent,
+			this.isBusy('refresh-access')
+				? 'Refreshing access…'
+				: this.isBusy('logout')
+					? 'Logging out…'
+					: null,
+		);
 	}
 }
 
-export function openSantiToolsModal(plugin: SantiObsidianToolsPlugin): void {
-	new SantiToolsModal(plugin).open();
+export function openSantiToolsModal(
+	plugin: SantiObsidianToolsPlugin,
+	options?: OpenSantiToolsOptions,
+): void {
+	new SantiToolsModal(plugin, options).open();
 }
