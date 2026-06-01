@@ -1,7 +1,5 @@
 import {
 	mergeInstallerThemeGrants,
-	ROYAL_LUX_ENTITLEMENT_ID,
-	isPlatformOwnerEmail,
 	userHasPluginEntitlement,
 	userHasThemeEntitlement,
 } from '../common/entitlements';
@@ -259,11 +257,6 @@ export class PlatformService {
 				parseGrantedThemeIdsFromApiPayload(pluginPayload),
 				rawPluginList,
 			);
-			if (isPlatformOwnerEmail(session.email)) {
-				grantedThemeIds = mergeInstallerThemeGrants(grantedThemeIds, [
-					ROYAL_LUX_ENTITLEMENT_ID,
-				]);
-			}
 		}
 
 		const merged: PlatformSessionState = {

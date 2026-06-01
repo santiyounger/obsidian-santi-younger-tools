@@ -72,11 +72,3 @@ export function userHasPluginEntitlement(entry: PluginCatalogEntry, grantedPlugi
 export function userHasThemeEntitlement(themeId: string, effectiveThemeIds: string[]): boolean {
   return userHasCatalogIdEntitlement(themeId, effectiveThemeIds);
 }
-
-/** Matches platform `ADMIN_EMAIL` — receives Royal Lux in grants when syncing access. */
-export const PLATFORM_OWNER_EMAIL_NORMALIZED = "";
-
-export function isPlatformOwnerEmail(email: string | undefined): boolean {
-  const normalized = email?.trim().toLowerCase();
-  return Boolean(normalized && normalized === PLATFORM_OWNER_EMAIL_NORMALIZED);
-}

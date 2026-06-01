@@ -6,7 +6,7 @@ import {
 	Setting,
 	setIcon,
 } from 'obsidian';
-import { APP_DISPLAY_NAME } from '../constants';
+import { APP_DISPLAY_NAME, SANTI_CONTACT_URL } from '../constants';
 import type SantiObsidianToolsPlugin from '../main';
 import type {
 	PluginCatalogEntry,
@@ -580,15 +580,14 @@ export class SantiToolsModal extends Modal {
 
 		const desc = parent.createDiv({ cls: 'santi-tools-sign-in-desc' });
 		desc.appendText(
-			'If the code never arrives, there may have been a typo in your order or an issue on my side, so please ',
+			'If the code never arrives, there may have been a typo in your order or an issue on our side. Visit ',
 		);
-		const contactLink = desc.createEl('a', {
-			href: 'https://www.santiyounger.com/contact',
-			text: 'Contact me',
-		});
+		const contactLink = desc.createEl('a', { href: SANTI_CONTACT_URL });
+		// eslint-disable-next-line obsidianmd/ui/sentence-case -- display URL as link label
+		contactLink.setText('santiyounger.com/contact');
 		contactLink.setAttr('target', '_blank');
-		contactLink.setAttr('rel', 'noopener');
-		desc.appendText('.');
+		contactLink.setAttr('rel', 'noopener noreferrer');
+		desc.appendText(' for help.');
 
 		let sendLoginButton: ButtonComponent | undefined;
 		let connectButton: ButtonComponent | undefined;
