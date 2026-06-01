@@ -24,6 +24,8 @@ import {
 import type { PlatformService } from './platform';
 
 export class PluginManager {
+	private catalogAutoUpdateInProgress = false;
+
 	constructor(
 		private app: App,
 		private platform: PlatformService,
@@ -195,19 +197,23 @@ export class PluginManager {
 			if (!entry) {
 				continue;
 			}
-			const latestRelease = await fetchPluginAssets(entry, {
-				platformBaseUrl: this.platform.getPlatformBaseUrl(),
-				authCookie: session?.authCookie,
-			});
-			updates.push({
-				pluginId: live.pluginId,
-				installedVersion: live.installedVersion,
-				latestVersion: latestRelease.version,
-				updateAvailable: isUpdateAvailable(
-					live.installedVersion,
-					latestRelease.version,
-				),
-			});
+			try {
+				const latestRelease = await fetchPluginAssets(entry, {
+					platformBaseUrl: this.platform.getPlatformBaseUrl(),
+					authCookie: session?.authCookie,
+				});
+				updates.push({
+					pluginId: live.pluginId,
+					installedVersion: live.installedVersion,
+					latestVersion: latestRelease.version,
+					updateAvailable: isUpdateAvailable(
+						live.installedVersion,
+						latestRelease.version,
+					),
+				});
+			} catch {
+				/* skip plugins we cannot reach */
+			}
 		}
 
 		await this.saveState({
@@ -237,5 +243,51 @@ export class PluginManager {
 				? `Updated ${updated} plugin(s). Reload Obsidian if prompted.`
 				: 'No plugins were updated.',
 		);
+	}
+
+	/**
+	 * On Obsidian reload: check installed catalog plugins and install pending updates.
+	 * Requires sign-in; skips plugins the account cannot access.
+	 */
+	async applyPendingCatalogUpdatesOnLoad(): Promise<void> {
+		if (this.catalogAutoUpdateInProgress || !this.getSession()) {
+			return;
+		}
+		this.catalogAutoUpdateInProgress = true;
+		try {
+			const catalog = getCatalogEntries();
+			const updates = await this.checkUpdates();
+			const pending = updates.filter((u) => u.updateAvailable);
+			const updatedNames: string[] = [];
+
+			for (const update of pending) {
+				const entry = catalog.find((item) => item.id === update.pluginId);
+				if (!entry || !this.platform.hasPluginAccess(entry)) {
+					continue;
+				}
+				try {
+					const result = await this.installPlugin(update.pluginId);
+					if (result.success) {
+						updatedNames.push(entry.name);
+					}
+				} catch {
+					/* try remaining plugins */
+				}
+			}
+
+			if (updatedNames.length > 0) {
+				const label =
+					updatedNames.length === 1
+						? updatedNames[0]
+						: `${String(updatedNames.length)} catalog plugins`;
+				new Notice(
+					`${label} updated. Reload Obsidian if prompted.`,
+				);
+			}
+		} catch {
+			/* non-fatal on startup */
+		} finally {
+			this.catalogAutoUpdateInProgress = false;
+		}
 	}
 }
