@@ -25,7 +25,7 @@ export class RoyalLuxUnlockModal extends Modal {
 
 	onOpen(): void {
 		const { contentEl, titleEl } = this;
-		titleEl.setText('Unlock Royal Lux');
+		titleEl.setText('Unlock royal lux');
 		this.modalEl.addClass('santi-royal-lux-unlock-modal');
 		contentEl.empty();
 		contentEl.addClass('santi-royal-lux-unlock');
