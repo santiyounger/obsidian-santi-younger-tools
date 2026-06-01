@@ -12,6 +12,7 @@ import type {
 	PluginCatalogEntry,
 	PluginUpdateInfo,
 	ThemeCatalogEntry,
+	ThemeStatusInfo,
 } from '../types';
 import {
 	getCatalogDescription,
@@ -31,8 +32,6 @@ type ToolsTab = 'plugins' | 'themes' | 'account';
 
 export class SantiToolsModal extends Modal {
 	private activeTab: ToolsTab = 'account';
-	private statusMessage = '';
-	private statusIsError = false;
 	private busy = false;
 	private emailInput = '';
 	private codeInput = '';
@@ -91,13 +90,11 @@ export class SantiToolsModal extends Modal {
 		await this.render();
 	}
 
-	private setStatus(message: string, isError = false): void {
-		this.statusMessage = message;
-		this.statusIsError = isError;
-		if (message) {
-			new Notice(message, isError ? 8000 : 5000);
+	private showNotice(message: string, isError = false): void {
+		if (!message) {
+			return;
 		}
-		void this.render();
+		new Notice(message, isError ? 8000 : 5000);
 	}
 
 	private async runBusy(task: () => Promise<void>): Promise<void> {
@@ -111,9 +108,7 @@ export class SantiToolsModal extends Modal {
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);
-			this.statusMessage = message;
-			this.statusIsError = true;
-			new Notice(message, 8000);
+			this.showNotice(message, true);
 		} finally {
 			this.busy = false;
 			await this.render();
@@ -145,13 +140,6 @@ export class SantiToolsModal extends Modal {
 		contentEl.empty();
 		contentEl.addClass('santi-tools');
 
-		if (this.statusMessage) {
-			contentEl.createDiv({
-				cls: `santi-tools-status${this.statusIsError ? ' is-error' : ''}`,
-				text: this.statusMessage,
-			});
-		}
-
 		if (!this.isLoggedIn()) {
 			const signInPanel = contentEl.createDiv({
 				cls: 'santi-tools-panel santi-tools-panel--form',
@@ -178,13 +166,6 @@ export class SantiToolsModal extends Modal {
 			await this.renderThemesPanel(panel);
 		} else {
 			await this.renderAccountPanel(panel);
-		}
-
-		if (this.busy) {
-			contentEl.createEl('p', {
-				cls: 'santi-tools-busy',
-				text: 'Working…',
-			});
 		}
 	}
 
@@ -215,8 +196,6 @@ export class SantiToolsModal extends Modal {
 		});
 		item.addEventListener('click', () => {
 			this.activeTab = tab;
-			this.statusMessage = '';
-			this.statusIsError = false;
 			void this.render();
 		});
 		item.addEventListener('keydown', (event) => {
@@ -225,8 +204,6 @@ export class SantiToolsModal extends Modal {
 			}
 			event.preventDefault();
 			this.activeTab = tab;
-			this.statusMessage = '';
-			this.statusIsError = false;
 			void this.render();
 		});
 	}
@@ -257,7 +234,7 @@ export class SantiToolsModal extends Modal {
 			void this.runBusy(async () => {
 				this.updates = await this.plugin.manager.checkUpdates();
 				const count = this.updates.filter((u) => u.updateAvailable).length;
-				this.setStatus(
+				this.showNotice(
 					count > 0
 						? `${count} update(s) available.`
 						: 'All catalog plugins are up to date.',
@@ -320,7 +297,6 @@ export class SantiToolsModal extends Modal {
 
 		const installedInfo = installed.find((p) => p.pluginId === entry.id);
 		const update = this.updates.find((u) => u.pluginId === entry.id);
-		const hasAccess = this.plugin.platform.hasPluginAccess(entry);
 		const isComingSoon = isComingSoonCatalogPlugin(entry);
 
 		if (installedInfo?.installedVersion) {
@@ -344,7 +320,7 @@ export class SantiToolsModal extends Modal {
 				updateBtn.addEventListener('click', () => {
 					void this.runBusy(async () => {
 						const result = await this.plugin.manager.installPlugin(entry.id);
-						this.setStatus(result.message, !result.success);
+						this.showNotice(result.message, !result.success);
 						await this.refreshUpdates();
 					});
 				});
@@ -367,14 +343,6 @@ export class SantiToolsModal extends Modal {
 					this.showPluginActionsMenu(event, entry);
 				});
 			}
-		} else if (!hasAccess) {
-			const learn =
-				entry.learnMoreUrl ?? this.plugin.platform.getPlatformBaseUrl();
-			const link = actions.createEl('a', { href: learn, text: 'Learn more' });
-			link.setAttr('target', '_blank');
-			link.setAttr('rel', 'noopener');
-			const linkIcon = link.createSpan({ attr: { 'aria-hidden': 'true' } });
-			setIcon(linkIcon, 'external-link');
 		} else if (isComingSoon) {
 			const soonBtn = actions.createEl('button', {
 				text: 'Coming soon',
@@ -391,7 +359,7 @@ export class SantiToolsModal extends Modal {
 			installBtn.addEventListener('click', () => {
 				void this.runBusy(async () => {
 					const result = await this.plugin.manager.installPlugin(entry.id);
-					this.setStatus(result.message, !result.success);
+					this.showNotice(result.message, !result.success);
 					await this.refreshUpdates();
 				});
 			});
@@ -407,7 +375,7 @@ export class SantiToolsModal extends Modal {
 			item.setTitle('Check for updates').onClick(() => {
 				void this.runBusy(async () => {
 					this.updates = await this.plugin.manager.checkUpdates();
-					this.setStatus('Update check finished.');
+					this.showNotice('Update check finished.');
 				});
 			});
 		});
@@ -418,7 +386,7 @@ export class SantiToolsModal extends Modal {
 				.onClick(() => {
 					void this.runBusy(async () => {
 						await this.plugin.manager.removeCatalogPlugin(entry.id);
-						this.setStatus(`${entry.name} removed from this vault.`);
+						this.showNotice(`${entry.name} removed from this vault.`);
 						await this.refreshUpdates();
 					});
 				});
@@ -428,16 +396,38 @@ export class SantiToolsModal extends Modal {
 
 	private async renderThemesPanel(parent: HTMLElement): Promise<void> {
 		const grid = parent.createDiv({ cls: 'santi-catalog-grid' });
+		let visibleCount = 0;
+
 		for (const theme of getThemeCatalogEntries()) {
-			if (theme.id === ROYAL_LUX_ENTITLEMENT_ID) {
-				await this.renderRoyalLuxThemeCard(grid, theme);
+			if (theme.id !== ROYAL_LUX_ENTITLEMENT_ID) {
+				continue;
 			}
+			const status = await getRoyalLuxThemeStatus(this.app);
+			const isInstalled = Boolean(status.installedVersion);
+			if (
+				!this.plugin.platform.shouldShowThemeCatalogEntry(
+					theme.id,
+					isInstalled,
+				)
+			) {
+				continue;
+			}
+			visibleCount++;
+			await this.renderRoyalLuxThemeCard(grid, theme, status);
+		}
+
+		if (visibleCount === 0) {
+			parent.createEl('p', {
+				cls: 'santi-tools-empty',
+				text: 'No themes in your catalog yet. Refresh access on the my account tab.',
+			});
 		}
 	}
 
 	private async renderRoyalLuxThemeCard(
 		parent: HTMLElement,
 		theme: ThemeCatalogEntry,
+		status: ThemeStatusInfo,
 	): Promise<void> {
 		const themeCard = parent.createDiv({ cls: 'santi-catalog-card' });
 
@@ -460,8 +450,6 @@ export class SantiToolsModal extends Modal {
 			body.createEl('p', { cls: 'santi-catalog-desc', text: description });
 		}
 
-		const status = await getRoyalLuxThemeStatus(this.app);
-		const hasAccess = this.plugin.platform.hasThemeAccess(theme.id);
 		const actions = body.createDiv({ cls: 'santi-catalog-actions' });
 
 		if (status.installedVersion) {
@@ -487,14 +475,6 @@ export class SantiToolsModal extends Modal {
 			menuBtn.addEventListener('click', (event) => {
 				this.showThemeActionsMenu(event, theme.name);
 			});
-		} else if (!hasAccess) {
-			const learn =
-				theme.learnMoreUrl ?? this.plugin.platform.getPlatformBaseUrl();
-			const link = actions.createEl('a', { href: learn, text: 'Learn more' });
-			link.setAttr('target', '_blank');
-			link.setAttr('rel', 'noopener');
-			const linkIcon = link.createSpan({ attr: { 'aria-hidden': 'true' } });
-			setIcon(linkIcon, 'external-link');
 		} else {
 			const installBtn = actions.createEl('button', {
 				cls: 'mod-cta',
@@ -510,7 +490,7 @@ export class SantiToolsModal extends Modal {
 						assets.manifestJson,
 						assets.themeCss,
 					);
-					this.setStatus(result.message, !result.success);
+					this.showNotice(result.message, !result.success);
 				});
 			});
 		}
@@ -527,7 +507,7 @@ export class SantiToolsModal extends Modal {
 						assets.manifestJson,
 						assets.themeCss,
 					);
-					this.setStatus(result.message, !result.success);
+					this.showNotice(result.message, !result.success);
 				});
 			});
 		});
@@ -538,7 +518,7 @@ export class SantiToolsModal extends Modal {
 				.onClick(() => {
 					void this.runBusy(async () => {
 						await removeRoyalLuxTheme(this.app);
-						this.setStatus(`${themeName} removed from this vault.`);
+						this.showNotice(`${themeName} removed from this vault.`);
 					});
 				});
 		});
@@ -625,9 +605,7 @@ export class SantiToolsModal extends Modal {
 					void this.runBusy(async () => {
 						const result = await this.plugin.platform.sendMagicLink(email);
 						this.hasSentLoginCode = true;
-						this.statusMessage = result.message;
-						this.statusIsError = !result.success;
-						new Notice(result.message, 5000);
+						this.showNotice(result.message, !result.success);
 					});
 				});
 		});
@@ -667,11 +645,9 @@ export class SantiToolsModal extends Modal {
 								this.codeInput = '';
 								this.activeTab = 'plugins';
 								await this.refreshUpdates();
-								this.statusMessage = result.message;
-								this.statusIsError = false;
-								new Notice(result.message, 5000);
+								this.showNotice(result.message);
 							} else {
-								this.setStatus(result.message, true);
+								this.showNotice(result.message, true);
 							}
 						});
 					});
@@ -717,7 +693,7 @@ export class SantiToolsModal extends Modal {
 				.onClick(() => {
 					void this.runBusy(async () => {
 						await this.plugin.platform.refreshEntitlements();
-						this.setStatus('Access refreshed.');
+						this.showNotice('Access refreshed.');
 					});
 				});
 		});
@@ -729,7 +705,7 @@ export class SantiToolsModal extends Modal {
 					this.hasSentLoginCode = false;
 					this.codeInput = '';
 					this.activeTab = 'account';
-					this.setStatus('Logged out.');
+					this.showNotice('Logged out.');
 				});
 			});
 		});

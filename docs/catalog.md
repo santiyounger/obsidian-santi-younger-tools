@@ -26,10 +26,10 @@ After editing, run `npm run build` (or `npm run dev`) and reload Obsidian. Users
 | `repository` | yes | GitHub repo URL for release downloads. |
 | `releaseChannel` | no | `stable` or `beta` (default: stable). |
 | `requiresAuth` | no | `true` (default): needs platform grant. `false`: any signed-in user can install. |
-| `showWithoutAccess` | no | Show card before purchase (e.g. free tools). |
-| `comingSoon` | no | Hide until installed; shows **Coming soon** when visible. |
+| `comingSoon` | no | Hidden from the catalog until installed. |
 | `obsidianManifestId` | no | Vault folder / manifest `id` if different from catalog `id`. |
-| `learnMoreUrl` | no | Link when user lacks access. |
+
+Users only see a plugin card if they have a matching platform grant (or already installed it). There is no “learn more” teaser for locked items.
 
 Install files (`main.js`, `manifest.json`) come from GitHub or platform releases—not from this JSON.
 
@@ -41,7 +41,8 @@ Install files (`main.js`, `manifest.json`) come from GitHub or platform releases
 | `name` | yes | Card title. |
 | `description` | no | Card blurb. |
 | `previewImageUrl` | no | Card image URL. |
-| `learnMoreUrl` | no | Link when user lacks platform access (defaults to platform home). |
+
+Users only see a theme card if they have a matching platform theme grant (or already installed it).
 
 Bundled theme assets (CSS, manifest) still live under `src/data/themes/<id>/`.
 

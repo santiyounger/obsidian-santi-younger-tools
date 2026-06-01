@@ -75,6 +75,13 @@ export class PlatformService {
 		return userHasThemeEntitlement(themeId, session.grantedThemeIds);
 	}
 
+	shouldShowThemeCatalogEntry(themeId: string, isInstalled: boolean): boolean {
+		if (isInstalled) {
+			return true;
+		}
+		return this.hasThemeAccess(themeId);
+	}
+
 	private async platformRequest(
 		route: string,
 		options: {
