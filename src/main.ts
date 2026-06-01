@@ -82,10 +82,6 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 			void this.platform.refreshEntitlements().catch(() => {
 				/* keep last known grants */
 			});
-			const devAutoUpdateTimer = window.setTimeout(() => {
-				void this.manager.runDeveloperAutoUpdateCycle();
-			}, 4000);
-			this.register(() => window.clearTimeout(devAutoUpdateTimer));
 		}
 	}
 

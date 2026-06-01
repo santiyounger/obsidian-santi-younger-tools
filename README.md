@@ -14,7 +14,9 @@ This plugin is the in-app version of the [Santi Obsidian Tools](https://github.c
 
 The plugin calls `https://platform.santiyounger.com` for login and private plugin assets, and **GitHub** for public release downloads. No telemetry. Session cookies are stored locally in the plugin data file for this vault.
 
-There is **no GitHub token field** in this plugin’s settings. Sign in under **My account** in the tools panel; that is how paid catalog plugins are unlocked.
+There is **no GitHub token field** in this plugin’s settings, and **buyers must never add one**. Sign in under **My account** in the tools panel; that is how paid catalog plugins are unlocked. Install and update files come from your platform API after login.
+
+**Do not embed a GitHub token in this plugin.** Anything shipped inside `main.js` can be extracted; that would expose your private repos to everyone.
 
 ## Policy and disclosure
 
@@ -31,21 +33,18 @@ This hub plugin is published in the community directory so purchasers can manage
 
 Catalog plugins you install remain subject to their own licenses and terms.
 
-### GitHub token (developers — private repos and release-based updates)
+### Production: GitHub releases → platform server (for all buyers)
 
-For private catalog plugins (for example Branch Writing), a GitHub token lets this plugin read **GitHub releases** directly—the same workflow as the [desktop Santi Obsidian Tools](https://github.com/santiyounger/santi-obsidian-tools) app (`catalog/private-auth.json` or `OBSIDIAN_INSTALLER_GITHUB_TOKEN`).
+When you publish a GitHub release for a private catalog plugin, **your platform** (for example on Vercel) should:
 
-1. Create a [GitHub personal access token](https://github.com/settings/tokens) with **repo** access (classic) or read access to your private plugin repos.
-2. Publish updates as GitHub releases with `manifest.json`, `main.js`, and optional `styles.css` attached (tag should match the version in `manifest.json`).
-3. In Obsidian, open **Settings → Keychain** and add a secret:
-   - **Name (id):** `santi-catalog-github` (must match exactly)
-   - **Value:** your token (`ghp_…` or fine-grained token)
+1. Store a **server-only** secret such as `CATALOG_GITHUB_TOKEN` (never in this Obsidian plugin).
+2. Implement `GET /api/plugins/:id/release-assets` so that, after it verifies the user’s session and entitlements, it fetches the **latest GitHub release** for that catalog entry’s repo and returns `version`, `manifestJson`, `mainJs`, and optional `stylesCss`.
 
-With the token saved, **install**, **check for updates**, and **update** use the **latest GitHub release** first (platform bundles are only a fallback if GitHub fails). After you sign in, a short delayed startup pass will also check and apply catalog updates when the token is present.
+Then every buyer only **logs in** in the tools panel; install and **Check for updates** stay in sync with your GitHub releases automatically.
 
-Buyers without a token still use platform login and server bundles only.
+Each release should attach `manifest.json`, `main.js`, and optional `styles.css` (tag should match the version in `manifest.json`).
 
-Requires Obsidian **1.11.4+** (Keychain / `SecretStorage` API).
+This Obsidian plugin does **not** read a GitHub token from Keychain or settings — not for buyers and not for local dev. Use the platform API (or test against a deployed/staging platform with the server token configured).
 
 ## Development
 
