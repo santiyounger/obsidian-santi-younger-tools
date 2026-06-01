@@ -307,7 +307,9 @@ async function fetchRepositoryAssets(
 			}
 			const depthA = a.split('/').filter(Boolean).length;
 			const depthB = b.split('/').filter(Boolean).length;
-			return scoreB - depthB - scoreA + depthA || a.localeCompare(b);
+			const byScore = scoreB - scoreA;
+			if (byScore !== 0) return byScore;
+			return depthA - depthB;
 		});
 		pluginRoot = candidateRoots[0] ?? '';
 	}

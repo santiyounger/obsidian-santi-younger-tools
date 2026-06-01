@@ -257,7 +257,7 @@
 }
 
 .santi-royal-lux-unlock-footer .setting-item-info {
-	display: none;
+	display: none; /* targets an Obsidian internal class name; may need updating if Obsidian renames it */
 }
 
 .santi-tools-sign-in-desc {
