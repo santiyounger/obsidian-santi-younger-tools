@@ -79,10 +79,23 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 		});
 
 		if (this.data.platformSession) {
-			void this.platform.refreshEntitlements().catch(() => {
-				/* keep last known grants */
-			});
+			void this.scheduleCatalogAutoUpdateOnLoad();
 		}
+	}
+
+	/** After reload, refresh entitlements then install pending catalog plugin updates. */
+	private scheduleCatalogAutoUpdateOnLoad(): void {
+		const timer = window.setTimeout(() => {
+			void (async () => {
+				try {
+					await this.platform.refreshEntitlements();
+				} catch {
+					/* keep last known grants */
+				}
+				await this.manager.applyPendingCatalogUpdatesOnLoad();
+			})();
+		}, 3000);
+		this.register(() => window.clearTimeout(timer));
 	}
 
 	onunload(): void {}

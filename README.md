@@ -26,7 +26,7 @@ This hub plugin is published in the community directory so purchasers can manage
 | --- | --- |
 | **Commercial use** | Paid catalog items require the same email login as [platform.santiyounger.com](https://platform.santiyounger.com). Free catalog items may install without purchase when marked in the catalog. |
 | **Third-party plugins** | Installs and updates **other** plugins into `.obsidian/plugins/` in the **current vault**. Those plugins are separate products; many are **not** listed in the official community directory and may be closed source. |
-| **Updates** | Catalog plugin updates run only when **you** choose **Check for updates**, **Update**, or **Update all** in the tools panel, or the **Check catalog plugin updates** command. This plugin does **not** silently update catalog plugins in the background. |
+| **Updates** | On Obsidian reload (when signed in), installed catalog plugins are checked and pending updates are installed automatically. You can also use **Check for updates**, **Update**, or **Update all** in the tools panel, or the **Check catalog plugin updates** command. |
 | **Self-update** | This hub plugin is updated only through normal community plugin releases, not from the Santi platform. |
 | **Telemetry** | No analytics or usage tracking. |
 | **Data** | Session and install metadata are stored locally in this plugin’s `data.json` for the vault. Network calls are limited to login, entitlements, and downloading assets you request. |
