@@ -1,5 +1,8 @@
 import { Notice, type App } from 'obsidian';
-import { getGithubPatFromKeychain } from './github-token';
+import {
+	getGithubPatFromKeychain,
+	hasGithubPatInKeychain,
+} from './github-token';
 import { isUpdateAvailable } from '../common/versioning';
 import { userHasPluginEntitlement } from '../common/entitlements';
 import type {
@@ -240,5 +243,24 @@ export class PluginManager {
 				? `Updated ${updated} plugin(s). Reload Obsidian if prompted.`
 				: 'No plugins were updated.',
 		);
+	}
+
+	/**
+	 * When a GitHub PAT is in Keychain, check installed catalog plugins against GitHub
+	 * releases and apply updates (same idea as the desktop installer background cycle).
+	 */
+	async runDeveloperAutoUpdateCycle(): Promise<void> {
+		if (!hasGithubPatInKeychain(this.app) || !this.getSession()) {
+			return;
+		}
+		try {
+			const updates = await this.checkUpdates();
+			if (!updates.some((u) => u.updateAvailable)) {
+				return;
+			}
+			await this.updateAllWithNotices();
+		} catch {
+			/* non-fatal on startup */
+		}
 	}
 }

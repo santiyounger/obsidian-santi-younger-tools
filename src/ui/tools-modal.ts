@@ -14,11 +14,8 @@ import {
 	ROYAL_LUX_PREVIEW_IMAGE_URL,
 } from '../catalog-ui';
 import type SantiObsidianToolsPlugin from '../main';
-import type {
-	PluginCatalogEntry,
-	PluginUpdateInfo,
-	RoyalLuxTestimonialAnswers,
-} from '../types';
+import type { PluginCatalogEntry, PluginUpdateInfo } from '../types';
+import { RoyalLuxUnlockModal } from './royal-lux-unlock-modal';
 import {
 	getCatalogEntries,
 	getPluginDisplayOverrides,
@@ -497,23 +494,22 @@ export class SantiToolsModal extends Modal {
 			});
 		} else {
 			const unlockBtn = actions.createEl('button', {
+				cls: 'mod-cta',
 				text: 'Share feedback to unlock',
 			});
 			unlockBtn.setAttribute('type', 'button');
 			unlockBtn.disabled = this.busy;
 			unlockBtn.addEventListener('click', () => {
-				this.activeTab = 'themes';
-				this.statusMessage = '';
-				void this.render();
+				new RoyalLuxUnlockModal(this.app, this.plugin, async () => {
+					this.activeTab = 'themes';
+					this.statusMessage = '';
+					await this.render();
+				}).open();
 			});
 			body.createEl('p', {
-				cls: 'santi-catalog-desc',
-				text: 'Bonus theme: share a quick testimonial after purchase, then install unlocks here.',
+				cls: 'santi-catalog-meta',
+				text: 'Available after purchase — share feedback to unlock install.',
 			});
-		}
-
-		if (!status.installedVersion && !unlocked && this.isLoggedIn()) {
-			this.renderRoyalLuxTestimonial(parent);
 		}
 	}
 
@@ -544,49 +540,6 @@ export class SantiToolsModal extends Modal {
 				});
 		});
 		menu.showAtMouseEvent(event);
-	}
-
-	private renderRoyalLuxTestimonial(parent: HTMLElement): void {
-		const box = parent.createDiv({ cls: 'santi-tools-testimonial' });
-		box.createEl('h3', {
-			cls: 'santi-tools-section-title',
-			text: 'Unlock royal lux',
-		});
-		const values: RoyalLuxTestimonialAnswers = {
-			purchasedOrUsing: '',
-			workedWell: '',
-			improve: '',
-			publicQuote: '',
-			creditAs: '',
-		};
-		const addField = (key: keyof RoyalLuxTestimonialAnswers, label: string) => {
-			new Setting(box).setName(label).addTextArea((area) => {
-				area.onChange((v) => {
-					values[key] = v;
-				});
-			});
-		};
-		addField('purchasedOrUsing', 'What did you purchase or what are you using?');
-		addField('workedWell', 'What has worked well for you so far?');
-		addField('improve', 'What could improve?');
-		addField('publicQuote', 'Optional public quote');
-		addField('creditAs', 'Credit as (name or Anonymous)');
-
-		new Setting(box).addButton((button) => {
-			button
-				.setButtonText('Submit and unlock')
-				.setCta()
-				.onClick(() => {
-					void this.runBusy(async () => {
-						const result =
-							await this.plugin.platform.submitRoyalLuxTestimonial(values);
-						this.setStatus(result.message, !result.success);
-						if (result.success) {
-							this.activeTab = 'themes';
-						}
-					});
-				});
-		});
 	}
 
 	private renderSignInPanel(parent: HTMLElement): void {

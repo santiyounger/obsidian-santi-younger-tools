@@ -31,16 +31,19 @@ This hub plugin is published in the community directory so purchasers can manage
 
 Catalog plugins you install remain subject to their own licenses and terms.
 
-### GitHub token (optional, developers only)
+### GitHub token (developers — private repos and release-based updates)
 
-You only need this if you are **developing** catalog entries and the platform does not yet serve `release-assets` for a private repo.
+For private catalog plugins (for example Branch Writing), a GitHub token lets this plugin read **GitHub releases** directly—the same workflow as the [desktop Santi Obsidian Tools](https://github.com/santiyounger/santi-obsidian-tools) app (`catalog/private-auth.json` or `OBSIDIAN_INSTALLER_GITHUB_TOKEN`).
 
-1. Create a [GitHub personal access token](https://github.com/settings/tokens) with **repo** access (classic token) or equivalent read access to your private plugin repositories.
-2. In Obsidian, open **Settings → Keychain** and add a secret:
+1. Create a [GitHub personal access token](https://github.com/settings/tokens) with **repo** access (classic) or read access to your private plugin repos.
+2. Publish updates as GitHub releases with `manifest.json`, `main.js`, and optional `styles.css` attached (tag should match the version in `manifest.json`).
+3. In Obsidian, open **Settings → Keychain** and add a secret:
    - **Name (id):** `santi-catalog-github` (must match exactly)
-   - **Value:** paste the token once (`ghp_…` or fine-grained token)
+   - **Value:** your token (`ghp_…` or fine-grained token)
 
-One token covers **all repositories** your GitHub account (or org) can read—you do not add a separate token per repo. The plugin sends it only to `api.github.com` when downloading release files as a fallback.
+With the token saved, **install**, **check for updates**, and **update** use the **latest GitHub release** first (platform bundles are only a fallback if GitHub fails). After you sign in, a short delayed startup pass will also check and apply catalog updates when the token is present.
+
+Buyers without a token still use platform login and server bundles only.
 
 Requires Obsidian **1.11.4+** (Keychain / `SecretStorage` API).
 
