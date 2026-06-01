@@ -1,14 +1,26 @@
 # Santi Younger Tools
 
-Install and update [Santi Younger](https://santiyounger.com) catalog plugins and themes in the active vault. Sign in with the same email and code as [platform.santiyounger.com](https://platform.santiyounger.com). Catalog hub only—not a marketplace for other authors.
+Install and update **Santi Younger's** plugins and themes with a simple platform login on [platform.santiyounger.com](https://platform.santiyounger.com).
 
-**Requires Obsidian 1.11.4+.** Paid items need a platform account.
+Paid items need a platform account.
 
 ## Install
 
-**Community:** **Settings → Community plugins → Browse** → search **Santi Younger Tools** → **Install** → enable → reload.
+**Santi Younger Tools** is not in the community plugin directory yet. Install it with **[BRAT](https://github.com/TfTHacker/obsidian42-brat)** (Beta Reviewers Auto-update Tester).
 
-**Manual / BRAT:** Build with `npm install && npm run build`, copy to `<Vault>/.obsidian/plugins/santi-younger-tools/`, enable, reload. BRAT repo: `santiyounger/obsidian-santi-younger-tools`.
+### Step 1 — Install BRAT
+
+1. Open **Settings → Community plugins**.
+2. Turn off **Restricted mode** if it is on.
+3. Select **Browse**, search for **BRAT**, install it.
+
+### Step 2 — Add this plugin through BRAT
+
+1. Open **BRAT** settings.
+2. Scroll down to **Beta plugin list**.
+3. Select **Add beta plugin**.
+4. Paste: `https://github.com/santiyounger/obsidian-santi-younger-tools`
+5. Select **Add plugin**.
 
 ## Use
 
@@ -16,7 +28,7 @@ Install and update [Santi Younger](https://santiyounger.com) catalog plugins and
 2. **My account** → sign in.
 3. **Plugins** or **Themes** → **Install** (reload if prompted).
 
-When signed in, catalog plugins auto-update shortly after Obsidian loads; use **Check for updates** in the panel anytime. This hub plugin updates via community releases only.
+When signed in, catalog plugins auto-update shortly after Obsidian loads; use **Check for updates** in the panel anytime. Until this hub is listed in the directory, update it through **BRAT** (or a new GitHub release BRAT tracks).
 
 ## Disclosure
 
@@ -30,13 +42,3 @@ When signed in, catalog plugins auto-update shortly after Obsidian loads; use **
 ## Support
 
 [platform.santiyounger.com](https://platform.santiyounger.com) · [Issues](https://github.com/santiyounger/obsidian-santi-younger-tools/issues) · [LICENSE](LICENSE)
-
-## Development
-
-```bash
-npm install && npm run dev   # or: npm run build && npm run lint
-```
-
-**Catalog content** (plugin/theme cards, preview images, copy): edit [`src/data/catalog/catalog.json`](src/data/catalog/catalog.json). See [docs/catalog.md](docs/catalog.md).
-
-Release tag = `manifest.json` version; attach `main.js`, `manifest.json`, and `styles.css` if used.

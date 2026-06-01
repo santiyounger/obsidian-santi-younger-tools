@@ -3,7 +3,7 @@
 	"name": "Santi Younger Tools",
 	"version": "1.0.0",
 	"minAppVersion": "1.11.4",
-	"description": "Install and update Santi Younger catalog plugins and themes. Paid items require platform sign-in.",
+	"description": "Install and update Santi Younger's plugins and themes with a simple platform login.",
 	"author": "Santi Younger",
 	"authorUrl": "https://santiyounger.com",
 	"isDesktopOnly": false
