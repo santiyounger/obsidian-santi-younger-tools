@@ -12,9 +12,7 @@ export interface PluginCatalogEntry {
 	minAppVersion?: string;
 	releaseChannel?: 'stable' | 'beta';
 	requiresAuth?: boolean;
-	showWithoutAccess?: boolean;
 	requiredCourseIds?: string[];
-	learnMoreUrl?: string;
 }
 
 export interface ThemeCatalogEntry {
@@ -22,7 +20,6 @@ export interface ThemeCatalogEntry {
 	name: string;
 	description?: string;
 	previewImageUrl?: string;
-	learnMoreUrl?: string;
 }
 
 export interface CatalogBundle {

@@ -74,28 +74,6 @@
 	font-size: var(--font-ui-small);
 }
 
-.santi-tools-status {
-	margin: 0;
-	padding: var(--size-4-2) var(--size-4-3);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
-	font-size: var(--font-ui-small);
-	line-height: var(--line-height-normal);
-	color: var(--text-muted);
-	background: var(--background-secondary);
-}
-
-.santi-tools-status.is-error {
-	color: var(--text-error);
-}
-
-.santi-tools-busy {
-	margin: 0;
-	color: var(--text-muted);
-	font-size: var(--font-ui-small);
-	font-style: italic;
-}
-
 /* Tab row: Obsidian core styles .horizontal-tab-header / .horizontal-tab-nav-item */
 .santi-tools-tab-header {
 	flex-wrap: wrap;

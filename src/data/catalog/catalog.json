@@ -16,8 +16,7 @@
 			"previewImageUrl": "https://santiyounger.b-cdn.net/sales-pages/backtrack-26-04-30_17-59_01.png",
 			"repository": "https://github.com/santiyounger/backtrack-obsidian",
 			"releaseChannel": "stable",
-			"requiresAuth": true,
-			"learnMoreUrl": "https://platform.santiyounger.com/branch-writing"
+			"requiresAuth": true
 		},
 		{
 			"id": "nested-notes",
@@ -27,7 +26,6 @@
 			"repository": "https://github.com/santiyounger/obsidian-plugin-vertical-files",
 			"releaseChannel": "stable",
 			"requiresAuth": true,
-			"learnMoreUrl": "https://platform.santiyounger.com",
 			"obsidianManifestId": "vertical-files",
 			"comingSoon": true
 		},
@@ -47,8 +45,7 @@
 			"id": "royal-lux",
 			"name": "Royal lux",
 			"description": "Dark mode theme with a dark purple style.",
-			"previewImageUrl": "https://santiyounger.b-cdn.net/sales-pages/2026-04-30%2009-20-28.png",
-			"learnMoreUrl": "https://platform.santiyounger.com"
+			"previewImageUrl": "https://santiyounger.b-cdn.net/sales-pages/2026-04-30%2009-20-28.png"
 		}
 	]
 }

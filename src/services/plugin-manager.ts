@@ -93,9 +93,6 @@ export class PluginManager {
 		if (installedIds.has(entry.id)) {
 			return true;
 		}
-		if (entry.showWithoutAccess) {
-			return true;
-		}
 		if (!session) {
 			return false;
 		}
@@ -110,10 +107,7 @@ export class PluginManager {
 			throw new Error(`Plugin ${pluginId} was not found in catalog.`);
 		}
 		if (!this.platform.hasPluginAccess(entry)) {
-			const learnMoreUrl = entry.learnMoreUrl ?? this.platform.getPlatformBaseUrl();
-			throw new Error(
-				`You do not have access to ${entry.name} yet. Learn more: ${learnMoreUrl}`,
-			);
+			throw new Error(`You do not have access to ${entry.name}.`);
 		}
 		if (isComingSoonCatalogPlugin(entry)) {
 			const exists = await resolvePluginDirectoryForCatalogId(
