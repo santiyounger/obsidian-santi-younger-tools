@@ -24,14 +24,6 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 				}
 				await this.savePluginData();
 			},
-			(themeId) => this.data.themeBonusUnlocks?.[themeId],
-			async (themeId, record) => {
-				this.data.themeBonusUnlocks = {
-					...(this.data.themeBonusUnlocks ?? {}),
-					[themeId]: record,
-				};
-				await this.savePluginData();
-			},
 		);
 
 		this.manager = new PluginManager(
@@ -103,7 +95,6 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 	private defaultData(): PluginDataState {
 		return {
 			installs: [],
-			themeBonusUnlocks: {},
 		};
 	}
 
@@ -115,7 +106,6 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 			lastCheckedAt: stored?.lastCheckedAt,
 			pluginUpdates: stored?.pluginUpdates,
 			platformSession: stored?.platformSession,
-			themeBonusUnlocks: stored?.themeBonusUnlocks ?? {},
 		};
 	}
 

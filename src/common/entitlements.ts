@@ -73,25 +73,10 @@ export function userHasThemeEntitlement(themeId: string, effectiveThemeIds: stri
   return userHasCatalogIdEntitlement(themeId, effectiveThemeIds);
 }
 
-/** Matches platform `ADMIN_EMAIL` — bypasses Royal Lux testimonial gate only for this account. */
+/** Matches platform `ADMIN_EMAIL` — receives Royal Lux in grants when syncing access. */
 export const PLATFORM_OWNER_EMAIL_NORMALIZED = "santi@santiyounger.com";
 
 export function isPlatformOwnerEmail(email: string | undefined): boolean {
   const normalized = email?.trim().toLowerCase();
   return Boolean(normalized && normalized === PLATFORM_OWNER_EMAIL_NORMALIZED);
-}
-
-/** Install button: platform theme grant, testimonial unlock, or platform owner. */
-export function isRoyalLuxInstallUnlocked(
-  email: string | undefined,
-  grantedThemeIds: string[],
-  royalLuxBonusUnlocked: boolean
-): boolean {
-  if (isPlatformOwnerEmail(email)) {
-    return true;
-  }
-  if (userHasThemeEntitlement(ROYAL_LUX_ENTITLEMENT_ID, grantedThemeIds)) {
-    return true;
-  }
-  return royalLuxBonusUnlocked;
 }

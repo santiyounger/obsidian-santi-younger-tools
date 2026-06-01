@@ -41,7 +41,7 @@ Install files (`main.js`, `manifest.json`) come from GitHub or platform releases
 | `name` | yes | Card title. |
 | `description` | no | Card blurb. |
 | `previewImageUrl` | no | Card image URL. |
-| `unlockHint` | no | Helper text when install is locked. |
+| `learnMoreUrl` | no | Link when user lacks platform access (defaults to platform home). |
 
 Bundled theme assets (CSS, manifest) still live under `src/data/themes/<id>/`.
 

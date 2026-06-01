@@ -13,7 +13,6 @@ import type {
 	PluginUpdateInfo,
 	ThemeCatalogEntry,
 } from '../types';
-import { RoyalLuxUnlockModal } from './royal-lux-unlock-modal';
 import {
 	getCatalogDescription,
 	getCatalogEntries,
@@ -462,7 +461,7 @@ export class SantiToolsModal extends Modal {
 		}
 
 		const status = await getRoyalLuxThemeStatus(this.app);
-		const unlocked = await this.plugin.platform.royalLuxInstallUnlocked();
+		const hasAccess = this.plugin.platform.hasThemeAccess(theme.id);
 		const actions = body.createDiv({ cls: 'santi-catalog-actions' });
 
 		if (status.installedVersion) {
@@ -488,7 +487,15 @@ export class SantiToolsModal extends Modal {
 			menuBtn.addEventListener('click', (event) => {
 				this.showThemeActionsMenu(event, theme.name);
 			});
-		} else if (unlocked) {
+		} else if (!hasAccess) {
+			const learn =
+				theme.learnMoreUrl ?? this.plugin.platform.getPlatformBaseUrl();
+			const link = actions.createEl('a', { href: learn, text: 'Learn more' });
+			link.setAttr('target', '_blank');
+			link.setAttr('rel', 'noopener');
+			const linkIcon = link.createSpan({ attr: { 'aria-hidden': 'true' } });
+			setIcon(linkIcon, 'external-link');
+		} else {
 			const installBtn = actions.createEl('button', {
 				cls: 'mod-cta',
 				text: this.busy ? 'Installing…' : 'Install',
@@ -506,26 +513,6 @@ export class SantiToolsModal extends Modal {
 					this.setStatus(result.message, !result.success);
 				});
 			});
-		} else {
-			const unlockBtn = actions.createEl('button', {
-				cls: 'mod-cta',
-				text: 'Share feedback to unlock',
-			});
-			unlockBtn.setAttribute('type', 'button');
-			unlockBtn.disabled = this.busy;
-			unlockBtn.addEventListener('click', () => {
-				new RoyalLuxUnlockModal(this.app, this.plugin, async () => {
-					this.activeTab = 'themes';
-					this.statusMessage = '';
-					await this.render();
-				}).open();
-			});
-			if (theme.unlockHint) {
-				body.createEl('p', {
-					cls: 'santi-catalog-meta',
-					text: theme.unlockHint,
-				});
-			}
 		}
 	}
 
