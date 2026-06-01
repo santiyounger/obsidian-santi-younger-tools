@@ -32,6 +32,7 @@ type ToolsTab = 'plugins' | 'themes' | 'account';
 
 export class SantiToolsModal extends Modal {
 	private activeTab: ToolsTab = 'account';
+	private panelLoading = false;
 	private busy = false;
 	private emailInput = '';
 	private codeInput = '';
@@ -83,11 +84,20 @@ export class SantiToolsModal extends Modal {
 	}
 
 	private async refreshAndRender(): Promise<void> {
-		await this.refreshUpdates();
-		if (!this.isLoggedIn()) {
-			this.activeTab = 'account';
+		const showLoader = this.isLoggedIn();
+		if (showLoader) {
+			this.panelLoading = true;
+			await this.render();
 		}
-		await this.render();
+		try {
+			await this.refreshUpdates();
+			if (!this.isLoggedIn()) {
+				this.activeTab = 'account';
+			}
+		} finally {
+			this.panelLoading = false;
+			await this.render();
+		}
 	}
 
 	private showNotice(message: string, isError = false): void {
@@ -135,10 +145,28 @@ export class SantiToolsModal extends Modal {
 		button.setDisabled(!canActivateWhenIdle);
 	}
 
+	private renderPanelLoading(parent: HTMLElement): void {
+		const wrap = parent.createDiv({ cls: 'santi-tools-loading' });
+		const icon = wrap.createSpan({
+			cls: 'santi-tools-loading-icon',
+			attr: { 'aria-hidden': 'true' },
+		});
+		setIcon(icon, 'loader-circle');
+		wrap.createEl('p', {
+			cls: 'santi-tools-loading-text',
+			text: 'Loading…',
+		});
+	}
+
 	private async render(): Promise<void> {
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass('santi-tools');
+
+		if (this.panelLoading || this.busy) {
+			this.renderPanelLoading(contentEl);
+			return;
+		}
 
 		if (!this.isLoggedIn()) {
 			const signInPanel = contentEl.createDiv({
@@ -148,12 +176,19 @@ export class SantiToolsModal extends Modal {
 			return;
 		}
 
+		const showThemesTab = await this.hasVisibleThemeCatalogEntries();
+		if (this.activeTab === 'themes' && !showThemesTab) {
+			this.activeTab = 'plugins';
+		}
+
 		contentEl.createEl('p', {
 			cls: 'santi-tools-intro',
-			text: 'Install and update catalog plugins and themes for your account.',
+			text: showThemesTab
+				? 'Install and update catalog plugins and themes for your account.'
+				: 'Install and update catalog plugins for your account.',
 		});
 
-		this.renderTabs(contentEl);
+		this.renderTabs(contentEl, showThemesTab);
 
 		const panelClass =
 			this.activeTab === 'account'
@@ -169,13 +204,34 @@ export class SantiToolsModal extends Modal {
 		}
 	}
 
-	private renderTabs(parent: HTMLElement): void {
+	private async hasVisibleThemeCatalogEntries(): Promise<boolean> {
+		for (const theme of getThemeCatalogEntries()) {
+			if (theme.id !== ROYAL_LUX_ENTITLEMENT_ID) {
+				continue;
+			}
+			const status = await getRoyalLuxThemeStatus(this.app);
+			const isInstalled = Boolean(status.installedVersion);
+			if (
+				this.plugin.platform.shouldShowThemeCatalogEntry(
+					theme.id,
+					isInstalled,
+				)
+			) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private renderTabs(parent: HTMLElement, showThemesTab: boolean): void {
 		const tabs = parent.createDiv({
 			cls: 'horizontal-tab-header santi-tools-tab-header',
 			attr: { role: 'tablist' },
 		});
 		this.renderTabButton(tabs, 'plugins', 'Plugins');
-		this.renderTabButton(tabs, 'themes', 'Themes');
+		if (showThemesTab) {
+			this.renderTabButton(tabs, 'themes', 'Themes');
+		}
 		this.renderTabButton(tabs, 'account', 'My account');
 	}
 
@@ -396,7 +452,6 @@ export class SantiToolsModal extends Modal {
 
 	private async renderThemesPanel(parent: HTMLElement): Promise<void> {
 		const grid = parent.createDiv({ cls: 'santi-catalog-grid' });
-		let visibleCount = 0;
 
 		for (const theme of getThemeCatalogEntries()) {
 			if (theme.id !== ROYAL_LUX_ENTITLEMENT_ID) {
@@ -412,15 +467,7 @@ export class SantiToolsModal extends Modal {
 			) {
 				continue;
 			}
-			visibleCount++;
 			await this.renderRoyalLuxThemeCard(grid, theme, status);
-		}
-
-		if (visibleCount === 0) {
-			parent.createEl('p', {
-				cls: 'santi-tools-empty',
-				text: 'No themes in your catalog yet. Refresh access on the my account tab.',
-			});
 		}
 	}
 
