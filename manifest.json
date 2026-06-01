@@ -1,7 +1,7 @@
 {
 	"id": "santi-younger-tools",
 	"name": "Santi Younger Tools",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "1.11.4",
 	"description": "Install and update Santi Younger's plugins and themes with a simple platform login.",
 	"author": "Santi Younger",
