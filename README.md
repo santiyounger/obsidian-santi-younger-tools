@@ -2,8 +2,6 @@
 
 Install, update, and remove plugins from the [Santi Younger](https://platform.santiyounger.com) catalog directly inside Obsidian. Sign in with the same email and login code as the course platform to unlock paid plugins, install **Royal Lux**, and keep catalog plugins up to date in the **current vault**.
 
-This plugin is the in-app version of the [Santi Obsidian Tools](https://github.com/santiyounger/santi-obsidian-tools) desktop installer.
-
 ## Features
 
 - **Plugins** — Browse the catalog, install, update, remove, and check for updates (GitHub releases or platform bundles).
