@@ -1,0 +1,241 @@
+/* Santi Younger Tools — size the dialog (.modal), not the overlay (.modal-container). */
+
+/* Full-viewport overlay: keep Obsidian’s flex centering; do not set width/height here. */
+.santi-tools-modal-container {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	max-width: none;
+	min-width: 0;
+	min-height: 0;
+	max-height: none;
+}
+
+/* Dialog box: Obsidian reads --dialog-width for horizontal sizing. */
+.modal.santi-tools-modal {
+	--dialog-width: 90vw;
+	width: 90vw;
+	min-width: 90vw;
+	max-width: 90vw;
+	height: 90vh;
+	max-height: 90vh;
+	margin: 0;
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+}
+
+.modal.santi-tools-modal .modal-content {
+	flex: 1 1 auto;
+	min-height: 0;
+	width: 100%;
+	max-width: 100%;
+	overflow-y: auto;
+	box-sizing: border-box;
+}
+
+.santi-tools {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+	width: 100%;
+	max-width: 100%;
+	flex: 1 1 auto;
+	min-height: 0;
+	box-sizing: border-box;
+}
+
+.santi-tools-panel {
+	width: 100%;
+	max-width: 100%;
+	flex: 1 1 auto;
+	min-height: 0;
+	box-sizing: border-box;
+}
+
+/* Form tabs: readable column, centered in the fixed-width shell */
+.santi-tools-panel--form {
+	max-width: 32rem;
+	margin-inline: auto;
+}
+
+/* Catalog tabs: use the full modal width */
+.santi-tools-panel--catalog {
+	display: flex;
+	flex-direction: column;
+}
+
+.santi-tools-intro {
+	margin: 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.santi-tools-status {
+	margin: 0;
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-small);
+	line-height: var(--line-height-normal);
+	color: var(--text-muted);
+	background: var(--background-secondary);
+}
+
+.santi-tools-status.is-error {
+	color: var(--text-error);
+}
+
+.santi-tools-busy {
+	margin: 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	font-style: italic;
+}
+
+/* Tab row: Obsidian core styles .horizontal-tab-header / .horizontal-tab-nav-item */
+.santi-tools-tab-header {
+	flex-wrap: wrap;
+	gap: var(--size-4-1);
+	margin-bottom: var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+	padding-bottom: var(--size-4-2);
+}
+
+.santi-tools-toolbar {
+	display: flex;
+	justify-content: flex-end;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	margin-bottom: var(--size-4-2);
+}
+
+.santi-catalog-grid {
+	display: grid;
+	width: 100%;
+	grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+	gap: var(--size-4-3);
+	align-content: start;
+}
+
+.santi-catalog-card {
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	overflow: hidden;
+	background: var(--background-secondary);
+}
+
+.santi-catalog-preview {
+	aspect-ratio: 16 / 9;
+	background: var(--background-modifier-form-field);
+	overflow: hidden;
+}
+
+.santi-catalog-preview img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.santi-catalog-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	padding: var(--size-4-3);
+	flex: 1;
+}
+
+.santi-catalog-title {
+	margin: 0;
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-semibold);
+	line-height: var(--line-height-tight);
+}
+
+.santi-catalog-desc {
+	margin: 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	line-height: var(--line-height-normal);
+}
+
+.santi-catalog-meta {
+	margin: 0;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+.santi-catalog-actions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	margin-top: auto;
+}
+
+.santi-catalog-actions a {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	font-size: var(--font-ui-small);
+}
+
+.santi-catalog-installed {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.santi-catalog-installed svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.santi-tools-section-title {
+	margin: 0 0 var(--size-4-2);
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-semibold);
+}
+
+.santi-tools-testimonial {
+	margin-top: var(--size-4-4);
+	padding-top: var(--size-4-3);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.santi-tools-sign-in-desc {
+	margin: 0 0 var(--size-4-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	line-height: var(--line-height-normal);
+}
+
+.santi-tools-account-heading {
+	margin: 0 0 var(--size-4-2);
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-semibold);
+}
+
+.santi-tools-empty {
+	margin: 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.santi-tools-button-loading svg {
+	animation: santi-tools-spin 0.85s linear infinite;
+}
+
+@keyframes santi-tools-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
