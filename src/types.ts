@@ -22,7 +22,7 @@ export interface ThemeCatalogEntry {
 	name: string;
 	description?: string;
 	previewImageUrl?: string;
-	unlockHint?: string;
+	learnMoreUrl?: string;
 }
 
 export interface CatalogBundle {
@@ -34,24 +34,6 @@ export interface PluginInstallState {
 	pluginId: string;
 	installedVersion: string;
 	updatedAt: string;
-}
-
-export interface ThemeBonusUnlockRecord {
-	unlockedAt: string;
-	email: string;
-}
-
-export interface RoyalLuxTestimonialAnswers {
-	purchasedOrUsing: string;
-	workedWell: string;
-	improve: string;
-	publicQuote: string;
-	creditAs: string;
-}
-
-export interface SubmitRoyalLuxTestimonialResult {
-	success: boolean;
-	message: string;
 }
 
 export interface PlatformSessionState {
@@ -136,5 +118,4 @@ export interface PluginDataState {
 	lastCheckedAt?: string;
 	pluginUpdates?: PluginUpdateInfo[];
 	platformSession?: PlatformSessionState;
-	themeBonusUnlocks?: Record<string, ThemeBonusUnlockRecord>;
 }

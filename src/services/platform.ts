@@ -2,8 +2,8 @@ import {
 	mergeInstallerThemeGrants,
 	ROYAL_LUX_ENTITLEMENT_ID,
 	isPlatformOwnerEmail,
-	isRoyalLuxInstallUnlocked,
 	userHasPluginEntitlement,
+	userHasThemeEntitlement,
 } from '../common/entitlements';
 import { DEFAULT_PLATFORM_BASE_URL } from '../common/default-platform-url';
 import { buildPlatformApiHeaders } from '../common/platform-fetch-headers';
@@ -14,10 +14,7 @@ import type {
 	PlatformConnectionState,
 	PlatformSessionState,
 	PluginCatalogEntry,
-	RoyalLuxTestimonialAnswers,
 	SendMagicLinkResult,
-	SubmitRoyalLuxTestimonialResult,
-	ThemeBonusUnlockRecord,
 	VerifyCodeResult,
 } from '../types';
 import {
@@ -32,13 +29,6 @@ export class PlatformService {
 		private getBaseUrl: () => string,
 		private getSession: () => PlatformSessionState | undefined,
 		private setSession: (session: PlatformSessionState | undefined) => Promise<void>,
-		private getThemeBonusUnlock: (
-			themeId: string,
-		) => ThemeBonusUnlockRecord | undefined,
-		private setThemeBonusUnlock: (
-			themeId: string,
-			record: ThemeBonusUnlockRecord,
-		) => Promise<void>,
 	) {}
 
 	getPlatformBaseUrl(): string {
@@ -77,54 +67,12 @@ export class PlatformService {
 		return userHasPluginEntitlement(entry, session.grantedPluginIds);
 	}
 
-	async royalLuxInstallUnlocked(): Promise<boolean> {
+	hasThemeAccess(themeId: string): boolean {
 		const session = this.getSession();
 		if (!session) {
 			return false;
 		}
-		const bonus = this.getThemeBonusUnlock(ROYAL_LUX_ENTITLEMENT_ID);
-		const bonusUnlocked = Boolean(
-			bonus?.email &&
-				bonus.email.trim().toLowerCase() ===
-					session.email.trim().toLowerCase(),
-		);
-		if (
-			isRoyalLuxInstallUnlocked(
-				session.email,
-				session.grantedThemeIds,
-				bonusUnlocked,
-			)
-		) {
-			return true;
-		}
-		try {
-			const base = this.getPlatformBaseUrl();
-			const sessionResponse = await httpRequest(`${base}/api/auth/session`, {
-				headers: buildPlatformApiHeaders(base, session.authCookie),
-			});
-			if (sessionResponse.ok) {
-				const body = sessionResponse.json as {
-					isAdmin?: boolean;
-					email?: string;
-				};
-				if (body.isAdmin) {
-					return true;
-				}
-				if (
-					body.email &&
-					isRoyalLuxInstallUnlocked(
-						body.email,
-						session.grantedThemeIds,
-						bonusUnlocked,
-					)
-				) {
-					return true;
-				}
-			}
-		} catch {
-			/* ignore */
-		}
-		return false;
+		return userHasThemeEntitlement(themeId, session.grantedThemeIds);
 	}
 
 	private async platformRequest(
@@ -327,37 +275,5 @@ export class PlatformService {
 
 	async logout(): Promise<void> {
 		await this.setSession(undefined);
-	}
-
-	async submitRoyalLuxTestimonial(
-		answers: RoyalLuxTestimonialAnswers,
-	): Promise<SubmitRoyalLuxTestimonialResult> {
-		const session = this.getSession();
-		if (!session) {
-			return {
-				success: false,
-				message: 'Sign in to submit feedback and unlock the theme.',
-			};
-		}
-		if (
-			!answers.purchasedOrUsing.trim() ||
-			!answers.workedWell.trim() ||
-			!answers.improve.trim()
-		) {
-			return {
-				success: false,
-				message: 'Please answer the required questions.',
-			};
-		}
-		const submittedAt = new Date().toISOString();
-		await this.setThemeBonusUnlock(ROYAL_LUX_ENTITLEMENT_ID, {
-			unlockedAt: submittedAt,
-			email: session.email,
-		});
-		return {
-			success: true,
-			message:
-				'Thank you! Royal Lux is unlocked for your account in this vault.',
-		};
 	}
 }
