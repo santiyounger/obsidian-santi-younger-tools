@@ -206,10 +206,36 @@ async function collectRepositoryFiles(
 	}
 }
 
+const BASE64_ALPHABET =
+	'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
 function decodeBase64Utf8(content: string): string {
 	const normalized = content.replace(/\n/gu, '');
-	const binary = atob(normalized);
-	const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+	const lookup = new Uint8Array(128);
+	for (let i = 0; i < 64; i++) {
+		lookup[BASE64_ALPHABET.charCodeAt(i)] = i;
+	}
+	const padding =
+		normalized.endsWith('==') ? 2 : normalized.endsWith('=') ? 1 : 0;
+	const bytes = new Uint8Array(
+		Math.floor((normalized.length * 3) / 4) - padding,
+	);
+	let byteIndex = 0;
+	for (let i = 0; i < normalized.length; i += 4) {
+		const a = lookup[normalized.charCodeAt(i)] ?? 0;
+		const b = lookup[normalized.charCodeAt(i + 1)] ?? 0;
+		const cChar = normalized[i + 2] ?? '=';
+		const dChar = normalized[i + 3] ?? '=';
+		const c = cChar === '=' ? 0 : (lookup[cChar.charCodeAt(0)] ?? 0);
+		const d = dChar === '=' ? 0 : (lookup[dChar.charCodeAt(0)] ?? 0);
+		bytes[byteIndex++] = (a << 2) | (b >> 4);
+		if (cChar !== '=') {
+			bytes[byteIndex++] = ((b & 15) << 4) | (c >> 2);
+		}
+		if (dChar !== '=') {
+			bytes[byteIndex++] = ((c & 3) << 6) | d;
+		}
+	}
 	return new TextDecoder().decode(bytes);
 }
 
