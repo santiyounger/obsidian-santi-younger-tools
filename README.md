@@ -37,4 +37,6 @@ When signed in, catalog plugins auto-update shortly after Obsidian loads; use **
 npm install && npm run dev   # or: npm run build && npm run lint
 ```
 
+**Catalog content** (plugin/theme cards, preview images, copy): edit [`src/data/catalog/catalog.json`](src/data/catalog/catalog.json). See [docs/catalog.md](docs/catalog.md).
+
 Release tag = `manifest.json` version; attach `main.js`, `manifest.json`, and `styles.css` if used.
