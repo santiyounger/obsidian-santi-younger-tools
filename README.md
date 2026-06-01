@@ -41,4 +41,6 @@ When signed in, catalog plugins auto-update shortly after Obsidian loads; use **
 
 ## Support
 
-[platform.santiyounger.com](https://platform.santiyounger.com) · [Issues](https://github.com/santiyounger/obsidian-santi-younger-tools/issues) · [LICENSE](LICENSE)
+[platform.santiyounger.com](https://platform.santiyounger.com) · [Issues](https://github.com/santiyounger/obsidian-santi-younger-tools/issues)
+
+**License:** Source available (not open source). All rights reserved. See [LICENSE](LICENSE).
