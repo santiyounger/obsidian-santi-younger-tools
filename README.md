@@ -1,48 +1,101 @@
 # Santi Younger Tools
 
-Install, update, and remove plugins from the [Santi Younger](https://platform.santiyounger.com) catalog directly inside Obsidian. Sign in with the same email and login code as the course platform to unlock paid plugins, install **Royal Lux**, and keep catalog plugins up to date in the **current vault**.
+Manage [Santi Younger](https://santiyounger.com) catalog plugins and themes inside your vault. Sign in with the same email and login code you use on [platform.santiyounger.com](https://platform.santiyounger.com) to unlock purchases, install catalog plugins, and install the **Royal Lux** theme.
+
+This repository is the official hub for the Santi Younger product catalog. It is **not** a general plugin marketplace for other authors.
+
+## Who this is for
+
+- Customers who bought Santi Younger courses or catalog plugins and want one place to install and update them in a vault.
+- Anyone installing a **free** catalog item marked as available without purchase in the catalog.
 
 ## Features
 
-- **Plugins** — Browse the catalog, install, update, remove, and check for updates (GitHub releases or platform bundles).
-- **Themes** — Install or remove the bundled **Royal Lux** theme; optional feedback unlock after purchase.
-- **My account** — Magic-link login, refresh entitlements, log out.
+- **Plugins** — Browse the Santi Younger catalog, install, update, remove, and check for updates for the **current vault**.
+- **Themes** — Install or remove the bundled **Royal Lux** theme (purchase or unlock rules apply on the platform).
+- **My account** — Email login with a one-time code, refresh entitlements, log out.
 
-## Network use
+## Requirements
 
-The plugin calls `https://platform.santiyounger.com` for login and private plugin assets, and **GitHub** for public release downloads. No telemetry. Session cookies are stored locally in the plugin data file for this vault.
+- Obsidian **1.11.4** or newer (`minAppVersion` in `manifest.json`).
+- Internet access when signing in or installing catalog items.
+- A Santi Younger platform account for **paid** catalog plugins and gated themes.
 
-There is **no GitHub token field** in this plugin’s settings, and **buyers must never add one**. Sign in under **My account** in the tools panel; that is how paid catalog plugins are unlocked. Install and update files come from your platform API after login.
+## Installation
 
-**Do not embed a GitHub token in this plugin.** Anything shipped inside `main.js` can be extracted; that would expose your private repos to everyone.
+### From the community directory (recommended)
 
-## Policy and disclosure
+1. Open **Settings → Community plugins**.
+2. Turn off **Restricted mode** if it is on (or allow this plugin in your restriction settings).
+3. Select **Browse**, search for **Santi Younger Tools**, and select **Install**.
+4. Enable the plugin.
+5. Reload when prompted.
 
-This hub plugin is published in the community directory so purchasers can manage **Santi Younger catalog** plugins in one place. It is **not** a general marketplace for third-party authors.
+### Manual install (testing or BRAT)
 
-| Topic | What this plugin does |
+Use this path only if you are testing a build or installing through [BRAT](https://github.com/TfTHacker/obsidian42-brat).
+
+1. Clone or download this repository.
+2. Run `npm install` and `npm run build` so `main.js` exists at the plugin root.
+3. Copy the plugin folder into `<Vault>/.obsidian/plugins/santi-younger-tools/` (folder name must match the plugin id).
+4. Enable **Santi Younger Tools** under **Settings → Community plugins**.
+5. Reload Obsidian.
+
+**BRAT:** Add `santiyounger/obsidian-santi-younger-tools` (or your fork) and choose the branch or release you want to track.
+
+## How to use
+
+1. Select the **package** ribbon icon or run **Open tools** from the command palette.
+2. Open the **My account** tab and sign in with your platform email and code.
+3. Open the **Plugins** or **Themes** tab.
+4. Select **Install** on an item you own (or a free catalog item).
+5. Reload Obsidian when asked so a newly installed community plugin can load.
+
+Installed catalog plugins live in `.obsidian/plugins/` in the **active vault**, the same as any other community plugin.
+
+## Updates
+
+| What | Behavior |
 | --- | --- |
-| **Commercial use** | Paid catalog items require the same email login as [platform.santiyounger.com](https://platform.santiyounger.com). Free catalog items may install without purchase when marked in the catalog. |
-| **Third-party plugins** | Installs and updates **other** plugins into `.obsidian/plugins/` in the **current vault**. Those plugins are separate products; many are **not** listed in the official community directory and may be closed source. |
-| **Updates** | On Obsidian reload (when signed in), installed catalog plugins are checked and pending updates are installed automatically. You can also use **Check for updates**, **Update**, or **Update all** in the tools panel, or the **Check catalog plugin updates** command. |
-| **Self-update** | This hub plugin is updated only through normal community plugin releases, not from the Santi platform. |
-| **Telemetry** | No analytics or usage tracking. |
-| **Data** | Session and install metadata are stored locally in this plugin’s `data.json` for the vault. Network calls are limited to login, entitlements, and downloading assets you request. |
+| **Catalog plugins** (for example Branch writing) | When you are signed in, this hub checks for updates shortly after Obsidian loads and **installs pending updates automatically**. You can also use **Check for updates**, **Update**, or **Update all** in the tools panel, or the **Check catalog plugin updates** command. |
+| **This hub plugin** | Updated only through normal community plugin releases (or your BRAT tracking branch), not through the Santi platform. |
 
-Catalog plugins you install remain subject to their own licenses and terms.
+Catalog updates require a valid session and platform access to each product. Files are downloaded from `platform.santiyounger.com` after authentication.
 
-### Production: GitHub releases → platform server (for all buyers)
+## Privacy and network use
 
-When you publish a GitHub release for a private catalog plugin, **your platform** (for example on Vercel) should:
+| Topic | Detail |
+| --- | --- |
+| **Hosts** | `https://platform.santiyounger.com` for sign-in, entitlements, and catalog install files. Public GitHub release URLs may be used only for **free** catalog entries that do not require platform bundles. |
+| **Telemetry** | None. No analytics or usage tracking. |
+| **Stored locally** | Session and install metadata in this plugin’s `data.json` for the vault. No GitHub tokens are stored in the plugin. |
+| **Vault access** | Writes plugin and theme files under `.obsidian/` when you install or update catalog items. Reads installed `manifest.json` files to show versions. |
 
-1. Store a **server-only** secret such as `CATALOG_GITHUB_TOKEN` (never in this Obsidian plugin).
-2. Implement `GET /api/plugins/:id/release-assets` so that, after it verifies the user’s session and entitlements, it fetches the **latest GitHub release** for that catalog entry’s repo and returns `version`, `manifestJson`, `mainJs`, and optional `stylesCss`.
+## Commercial relationship and third-party installs
 
-Then every buyer only **logs in** in the tools panel; install and **Check for updates** stay in sync with your GitHub releases automatically.
+| Topic | Detail |
+| --- | --- |
+| **Commercial use** | Paid catalog items require the same account as [platform.santiyounger.com](https://platform.santiyounger.com). Free catalog items may install without purchase when marked in the catalog. |
+| **Scope** | This hub installs and updates **Santi Younger catalog** products only. |
+| **Other plugins** | Catalog plugins are separate products installed into your vault. Many are **not** in the official community directory and may be closed source. Each catalog product remains subject to its own license and terms from Santi Younger. |
+| **Payments** | Purchases and refunds are handled on the platform and website, not inside this plugin. |
 
-Each release should attach `manifest.json`, `main.js`, and optional `styles.css` (tag should match the version in `manifest.json`).
+## Free and paid catalog items
 
-This Obsidian plugin does **not** read a GitHub token from Keychain or settings — not for buyers and not for local dev. Use the platform API (or test against a deployed/staging platform with the server token configured).
+- **Paid** — Shown when your signed-in account has access (course or product entitlements synced from the platform).
+- **Free** — Marked in the bundled catalog; may install without purchase when `showWithoutAccess` applies.
+
+If install fails with an access error, sign in again or confirm your purchase on the platform, then use **Refresh access** on the **My account** tab.
+
+## Support
+
+- Platform and purchases: [platform.santiyounger.com](https://platform.santiyounger.com)
+- Website: [santiyounger.com](https://santiyounger.com)
+- Bugs and feature requests for **this hub plugin**: [GitHub issues](https://github.com/santiyounger/obsidian-santi-younger-tools/issues)
+
+## License
+
+Source is released under the license in [LICENSE](LICENSE). Catalog plugins you install through this hub are governed by their own terms.
 
 ## Development
 
@@ -51,9 +104,13 @@ npm install
 npm run dev
 ```
 
-Copy or symlink the plugin folder into `<Vault>/.obsidian/plugins/santi-younger-tools/`, enable it under **Settings → Community plugins**, then open **Santi Younger Tools** from the ribbon or command palette.
+Copy or symlink this folder to `<Vault>/.obsidian/plugins/santi-younger-tools/`, enable it under **Settings → Community plugins**, then open **Santi Younger Tools** from the ribbon or command palette.
 
 ```bash
 npm run build
 npm run lint
 ```
+
+Release tags must match `version` in `manifest.json`. Attach `main.js`, `manifest.json`, and `styles.css` (if present) to GitHub releases for community distribution.
+
+Maintainers: private catalog binaries must be served from the platform API (`GET /api/plugins/:id/release-assets`) using a **server-side** GitHub token. This client never ships repository credentials.
