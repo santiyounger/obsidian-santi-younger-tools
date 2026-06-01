@@ -1,9 +1,9 @@
 {
-	"id": "santi-younger-tools",
-	"name": "Santi Younger Tools",
+	"id": "catalog-installer",
+	"name": "Catalog installer",
 	"version": "1.0.0",
 	"minAppVersion": "1.11.4",
-	"description": "Sign in with your Santi Younger account to install and update catalog plugins, themes, and vault assets.",
+	"description": "Browse and install a curated catalog of plugins, themes, and vault assets. Paid items unlock with a platform account.",
 	"author": "Santi Younger",
 	"authorUrl": "https://santiyounger.com",
 	"isDesktopOnly": false

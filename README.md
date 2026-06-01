@@ -66,7 +66,7 @@ Catalog updates require a valid session and platform access to each product. Fil
 
 | Topic | Detail |
 | --- | --- |
-| **Hosts** | `https://platform.santiyounger.com` for sign-in, entitlements, and catalog install files. Public GitHub release URLs may be used only for **free** catalog entries that do not require platform bundles. |
+| **Hosts** | `https://platform.santiyounger.com` for sign-in, entitlements, and catalog install files. Public GitHub release URLs may be used only for **free** catalog entries that do not require platform bundles. Plugin and theme preview images are fetched from `https://santiyounger.b-cdn.net`. |
 | **Telemetry** | None. No analytics or usage tracking. |
 | **Stored locally** | Session and install metadata in this plugin’s `data.json` for the vault. No GitHub tokens are stored in the plugin. |
 | **Vault access** | Writes plugin and theme files under `.obsidian/` when you install or update catalog items. Reads installed `manifest.json` files to show versions. |
