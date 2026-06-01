@@ -1,0 +1,38 @@
+[
+  {
+    "id": "branch-writing",
+    "name": "Branch writing",
+    "description": "Write your ideas in pieces and organize them in a tree. Edit side-by-side with keyboard shortcuts.",
+    "repository": "https://github.com/santiyounger/branch-writing",
+    "releaseChannel": "stable",
+    "requiresAuth": true
+  },
+  {
+    "id": "backtrack",
+    "name": "BackTrack",
+    "description": "Keeps older versions of your notes so you can rewrite freely. Save once and look back anytime.",
+    "repository": "https://github.com/santiyounger/backtrack-obsidian",
+    "releaseChannel": "stable",
+    "requiresAuth": true,
+    "learnMoreUrl": "https://platform.santiyounger.com/branch-writing"
+  },
+  {
+    "id": "nested-notes",
+    "name": "Nested Notes",
+    "description": "An improved method to organize notes that doesn't rely on folders but has all the benefits that folders offer without their downsides.",
+    "repository": "https://github.com/santiyounger/obsidian-plugin-vertical-files",
+    "releaseChannel": "stable",
+    "requiresAuth": true,
+    "learnMoreUrl": "https://platform.santiyounger.com",
+    "obsidianManifestId": "vertical-files"
+  },
+  {
+    "id": "obsidian-plugin-creator",
+    "name": "Obsidian Plugin Creator",
+    "description": "Start a plugin project from the official sample template, set up a clean structure, and jump straight to the files where the real work starts.",
+    "repository": "https://github.com/santiyounger/obsidian-plugin-creator",
+    "releaseChannel": "stable",
+    "requiresAuth": false,
+    "showWithoutAccess": true
+  }
+]

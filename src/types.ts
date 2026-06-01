@@ -1,0 +1,131 @@
+export interface PluginDisplayEntry {
+	comingSoon?: boolean;
+}
+
+export type PluginDisplayById = Record<string, PluginDisplayEntry>;
+
+export interface PluginCatalogEntry {
+	id: string;
+	name: string;
+	description?: string;
+	repository: string;
+	obsidianManifestId?: string;
+	sourceType?: 'release' | 'repository';
+	sourceSubdir?: string;
+	sourceRef?: string;
+	minAppVersion?: string;
+	releaseChannel?: 'stable' | 'beta';
+	requiresAuth?: boolean;
+	showWithoutAccess?: boolean;
+	requiredCourseIds?: string[];
+	learnMoreUrl?: string;
+}
+
+export interface PluginInstallState {
+	pluginId: string;
+	installedVersion: string;
+	updatedAt: string;
+}
+
+export interface ThemeBonusUnlockRecord {
+	unlockedAt: string;
+	email: string;
+}
+
+export interface RoyalLuxTestimonialAnswers {
+	purchasedOrUsing: string;
+	workedWell: string;
+	improve: string;
+	publicQuote: string;
+	creditAs: string;
+}
+
+export interface SubmitRoyalLuxTestimonialResult {
+	success: boolean;
+	message: string;
+}
+
+export interface PlatformSessionState {
+	baseUrl: string;
+	email: string;
+	authCookie: string;
+	purchasedCourses: string[];
+	grantedPluginIds: string[];
+	grantedThemeIds: string[];
+	lastSyncedAt: string;
+	displayName?: string;
+}
+
+export interface PlatformConnectionState {
+	connected: boolean;
+	baseUrl: string;
+	email?: string;
+	displayName?: string;
+	purchasedCourses: string[];
+	grantedPluginIds: string[];
+	grantedThemeIds: string[];
+	lastSyncedAt?: string;
+}
+
+export interface SendMagicLinkResult {
+	success: boolean;
+	message: string;
+}
+
+export interface VerifyCodeResult {
+	success: boolean;
+	message: string;
+	connectionState?: PlatformConnectionState;
+}
+
+export interface PluginReleaseAssets {
+	version: string;
+	manifestJson: string;
+	mainJs: string;
+	stylesCss?: string;
+	extraFiles?: Array<{
+		relativePath: string;
+		content: string;
+	}>;
+}
+
+export interface InstallResult {
+	pluginId: string;
+	version: string;
+	success: boolean;
+	message: string;
+}
+
+export interface ThemeInstallResult {
+	themeName: string;
+	version: string;
+	success: boolean;
+	message: string;
+}
+
+export interface ThemeStatusInfo {
+	themeName: string;
+	availableVersion: string;
+	installedVersion?: string;
+}
+
+export interface PluginUpdateInfo {
+	pluginId: string;
+	installedVersion: string;
+	latestVersion: string;
+	updateAvailable: boolean;
+}
+
+export interface InstalledPluginInfo {
+	pluginId: string;
+	name: string;
+	installedVersion: string;
+}
+
+export interface PluginDataState {
+	installs: PluginInstallState[];
+	lastCheckedAt?: string;
+	pluginUpdates?: PluginUpdateInfo[];
+	platformSession?: PlatformSessionState;
+	themeBonusUnlocks?: Record<string, ThemeBonusUnlockRecord>;
+}
