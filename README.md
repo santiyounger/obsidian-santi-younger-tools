@@ -1,16 +1,16 @@
 # Santi Younger Tools
 
-Install and update **Santi Younger's** plugins and themes with a platform login on [platform.santiyounger.com](https://platform.santiyounger.com). For Santi Younger clients. Sign in with the email you use for purchases to access the catalog.
+Install and update **Santi Younger's** plugins and themes with a platform login on [platform.santiyounger.com](https://platform.santiyounger.com). For Santi Younger clients who have purchased catalog products. Sign in with the email you use for purchases to access the catalog.
 
-The catalog is limited to Santi Younger products.
+The catalog is limited to Santi Younger products. Every catalog plugin and theme requires a purchase on the platform before install.
 
 ## Disclosure
 
 | Topic | Detail |
 | --- | --- |
-| Network | `platform.santiyounger.com` (login, entitlements, install files). Free catalog entries may use public GitHub releases. Preview images from `santiyounger.b-cdn.net`. No telemetry. |
+| Network | `platform.santiyounger.com` (login, entitlements, install files). Authorized install files may be delivered from GitHub releases. Preview images from `santiyounger.b-cdn.net`. No telemetry. |
 | Data | Session and install metadata in plugin `data.json`. Writes `.obsidian/plugins/` and themes on install. |
-| Commercial | Paid items require platform access. Purchases on the website, not in-plugin. |
+| Commercial | The full catalog is paid. Purchases on platform.santiyounger.com, not in Obsidian. |
 | Account | Sign-in required to install and update catalog items. Use the email from your Santi Younger purchase or account. |
 | Other plugins | Installs separate Santi catalog products into the vault. Many are not in the community directory and have their own terms. |
 
@@ -46,4 +46,4 @@ When signed in, catalog plugins auto-update shortly after Obsidian loads. Use **
 
 ## License
 
-**Santi Younger Tools** is released under the [MIT License](LICENSE). Catalog plugins and themes you install with it are separate products. Many are paid tools with their own licenses and terms, not covered by MIT.
+**Santi Younger Tools** is released under the [MIT License](LICENSE). Catalog plugins and themes you install with it are separate paid products with their own licenses and terms, not covered by MIT.
