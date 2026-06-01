@@ -448,19 +448,6 @@ export async function fetchPluginAssets(
 	const privateContext = options.authCookie
 		? { authCookie: options.authCookie }
 		: undefined;
-
-	// Same as the desktop installer when private-auth.json has a token: GitHub releases
-	// are the source of truth for install/update (platform is fallback if GitHub fails).
-	if (options.githubToken && entry.sourceType !== 'repository') {
-		try {
-			return await fetchLatestReleaseAssets(entry, options.githubToken);
-		} catch (githubError) {
-			if (!entry.requiresAuth || !privateContext) {
-				throw githubError;
-			}
-		}
-	}
-
 	if (entry.requiresAuth && privateContext) {
 		try {
 			return await fetchPrivatePluginAssetsFromPlatform(
