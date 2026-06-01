@@ -205,10 +205,59 @@
 	font-weight: var(--font-semibold);
 }
 
-.santi-tools-testimonial {
+.modal.santi-royal-lux-unlock-modal {
+	--dialog-width: 34rem;
+	width: min(34rem, 92vw);
+	max-width: min(34rem, 92vw);
+}
+
+.santi-royal-lux-unlock-intro {
+	margin: 0 0 var(--size-4-3);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	line-height: var(--line-height-normal);
+}
+
+.santi-royal-lux-unlock-field .setting-item-info {
+	flex: 1 1 auto;
+}
+
+.santi-royal-lux-unlock-field textarea {
+	min-height: 4.5rem;
+	resize: vertical;
+}
+
+.santi-royal-lux-unlock-status {
+	margin: 0 0 var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-s);
+	background: var(--background-modifier-success);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+}
+
+.santi-royal-lux-unlock-status.is-error {
+	background: var(--background-modifier-error);
+}
+
+.santi-royal-lux-unlock-footer {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: var(--size-4-2);
 	margin-top: var(--size-4-4);
 	padding-top: var(--size-4-3);
 	border-top: 1px solid var(--background-modifier-border);
+}
+
+.santi-royal-lux-unlock-footer .setting-item {
+	border: none;
+	padding: 0;
+	margin: 0;
+}
+
+.santi-royal-lux-unlock-footer .setting-item-info {
+	display: none;
 }
 
 .santi-tools-sign-in-desc {

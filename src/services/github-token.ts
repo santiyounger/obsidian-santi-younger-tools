@@ -17,3 +17,8 @@ export function getGithubPatFromKeychain(app: App): string | undefined {
 	const trimmed = value?.trim();
 	return trimmed ? trimmed : undefined;
 }
+
+/** True when a non-empty PAT is stored (install/update will prefer GitHub releases). */
+export function hasGithubPatInKeychain(app: App): boolean {
+	return Boolean(getGithubPatFromKeychain(app));
+}
