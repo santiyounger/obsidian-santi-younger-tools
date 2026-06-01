@@ -1,38 +1,170 @@
-name: Release
+name: Tag, build and release on manifest version change
 
 on:
   push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
-
-permissions:
-  contents: write
+    branches: [ main ]
 
 jobs:
-  release:
+  tag-build-release:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up Node
+      - name: Read version from manifest.json
+        id: ver
+        run: |
+          VERSION=$(jq -r '.version' manifest.json)
+          NAME=$(jq -r '.name' manifest.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+
+      - name: Get latest GitHub release tag
+        id: latest
+        uses: actions/github-script@v7
+        with:
+          result-encoding: string
+          script: |
+            const { owner, repo } = context.repo;
+            try {
+              const rel = await github.rest.repos.getLatestRelease({ owner, repo });
+              return rel.data.tag_name || '';
+            } catch (e) {
+              if (e.status === 404) {
+                return '';
+              }
+              throw e;
+            }
+
+      - name: Compare manifest version with latest release
+        id: vercmp
+        run: |
+          LATEST='${{ steps.latest.outputs.result }}'
+          CUR='${{ steps.ver.outputs.version }}'
+          parse_semver() {
+            IFS='.' read -r MAJ MIN PAT <<< "$1"
+            echo "${MAJ:-0} ${MIN:-0} ${PAT:-0}"
+          }
+          cmp_versions() {
+            # returns 0 if $1 > $2, else 1
+            read -r A1 A2 A3 <<< "$(parse_semver "$1")"
+            read -r B1 B2 B3 <<< "$(parse_semver "$2")"
+            if [ "$A1" -gt "$B1" ]; then return 0; fi
+            if [ "$A1" -lt "$B1" ]; then return 1; fi
+            if [ "$A2" -gt "$B2" ]; then return 0; fi
+            if [ "$A2" -lt "$B2" ]; then return 1; fi
+            if [ "$A3" -gt "$B3" ]; then return 0; fi
+            return 1
+          }
+          if [ -z "$LATEST" ]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          else
+            if cmp_versions "$CUR" "$LATEST"; then
+              echo "should_release=true" >> $GITHUB_OUTPUT
+            else
+              echo "should_release=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Determine if tag already exists
+        id: tag_check
+        run: |
+          if git rev-parse -q --verify "refs/tags/${{ steps.ver.outputs.version }}"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate release notes body
+        if: steps.vercmp.outputs.should_release == 'true'
+        id: notes
+        uses: actions/github-script@v7
+        with:
+          result-encoding: string
+          script: |
+            const { owner, repo } = context.repo;
+            const current = process.env.CURRENT;
+            const previous = process.env.PREVIOUS;
+            let notes = '';
+            try {
+              const res = await github.rest.repos.generateReleaseNotes({
+                owner, repo,
+                tag_name: current,
+                previous_tag_name: previous || undefined,
+              });
+              notes = res.data.body || '';
+              // Remove any default "Full Changelog:" lines GitHub may include
+              notes = notes
+                .split('\n')
+                .filter(line => !/^\*\*Full Changelog\*\*:/i.test(line.trim()))
+                .join('\n')
+                .trim();
+            } catch (e) {
+              // Fallback to empty notes
+              notes = '';
+            }
+            if (previous) {
+              const url = `https://github.com/${owner}/${repo}/compare/${previous}...${current}?diff=split&w=1`;
+              notes += `${notes ? '\n\n' : ''}[Here's a List of What Has Changed Since the Last Version of This Plugin](${url})`;
+            }
+            return notes;
+        env:
+          CURRENT: ${{ steps.ver.outputs.version }}
+          PREVIOUS: ${{ steps.latest.outputs.result }}
+
+      - name: Create and push tag
+        if: steps.tag_check.outputs.exists == 'false' && steps.vercmp.outputs.should_release == 'true'
+        run: |
+          git tag ${{ steps.ver.outputs.version }}
+          git push origin ${{ steps.ver.outputs.version }}
+
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: '22'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build plugin
+        if: steps.vercmp.outputs.should_release == 'true'
         run: npm run build
 
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+      - name: Prepare release artifacts
+        if: steps.vercmp.outputs.should_release == 'true'
+        run: |
+          # Ensure required files exist
+          test -f main.js
+          test -f manifest.json
+          test -f styles.css
+
+      - name: Generate artifact attestations
+        if: steps.vercmp.outputs.should_release == 'true'
+        uses: actions/attest-build-provenance@v3
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          files: |
-            manifest.json
+          subject-path: |
             main.js
             styles.css
+
+      - name: Create GitHub release and upload assets (draft)
+        if: steps.vercmp.outputs.should_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.version }}
+          name: Santi Younger Tools ${{ steps.ver.outputs.version }}
+          draft: true
+          prerelease: false
+          body: ${{ steps.notes.outputs.result }}
+          files: |
+            main.js
+            manifest.json
+            styles.css
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
