@@ -62,6 +62,40 @@
 	margin-inline: auto;
 }
 
+/* Sign-in: use horizontal space for long emails and codes */
+.santi-tools-panel--sign-in {
+	max-width: min(40rem, 100%);
+}
+
+.santi-tools-panel--sign-in .setting-item {
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--size-4-2);
+}
+
+.santi-tools-panel--sign-in .setting-item-info {
+	width: 100%;
+	margin-inline-end: 0;
+}
+
+.santi-tools-panel--sign-in .setting-item-control {
+	width: 100%;
+	padding-inline-end: 0;
+}
+
+.santi-tools-panel--sign-in .setting-item-control input[type='text'] {
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+.santi-tools-sign-in-help {
+	margin: var(--size-4-2) 0 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	line-height: var(--line-height-normal);
+}
+
 /* Catalog tabs: use the full modal width */
 .santi-tools-panel--catalog {
 	display: flex;

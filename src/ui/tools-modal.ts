@@ -170,7 +170,7 @@ export class SantiToolsModal extends Modal {
 
 		if (!this.isLoggedIn()) {
 			const signInPanel = contentEl.createDiv({
-				cls: 'santi-tools-panel santi-tools-panel--form',
+				cls: 'santi-tools-panel santi-tools-panel--form santi-tools-panel--sign-in',
 			});
 			this.renderSignInPanel(signInPanel);
 			return;
@@ -572,25 +572,54 @@ export class SantiToolsModal extends Modal {
 		menu.showAtMouseEvent(event);
 	}
 
+	private appendSignInContactLink(parent: HTMLElement): void {
+		const help = parent.createDiv({ cls: 'santi-tools-sign-in-help' });
+		help.appendText("You didn't receive the code. Please ");
+		const contactLink = help.createEl('a', { href: SANTI_CONTACT_URL });
+		contactLink.setText('Contact me');
+		contactLink.setAttr('target', '_blank');
+		contactLink.setAttr('rel', 'noopener noreferrer');
+		help.appendText('.');
+	}
+
+	private async verifyLoginCode(): Promise<void> {
+		const email = this.emailInput.trim();
+		const code = this.codeInput.trim();
+		if (!email || !/^\d{6}$/.test(code)) {
+			return;
+		}
+		const result = await this.plugin.platform.verifyCode(email, code);
+		if (result.success) {
+			this.hasSentLoginCode = false;
+			this.codeInput = '';
+			this.activeTab = 'plugins';
+			await this.refreshUpdates();
+			this.showNotice(result.message);
+		} else {
+			this.showNotice(result.message, true);
+		}
+	}
+
 	private renderSignInPanel(parent: HTMLElement): void {
 		parent.createEl('p', {
 			cls: 'santi-tools-intro',
 			text: 'Sign in with the email you used for your purchase to install catalog plugins.',
 		});
 
-		const desc = parent.createDiv({ cls: 'santi-tools-sign-in-desc' });
-		desc.appendText(
-			'If the code never arrives, there may have been a typo in your order or an issue on our side. Visit ',
-		);
-		const contactLink = desc.createEl('a', { href: SANTI_CONTACT_URL });
-		// eslint-disable-next-line obsidianmd/ui/sentence-case -- display URL as link label
-		contactLink.setText('santiyounger.com/contact');
-		contactLink.setAttr('target', '_blank');
-		contactLink.setAttr('rel', 'noopener noreferrer');
-		desc.appendText(' for help.');
+		if (!this.hasSentLoginCode) {
+			const desc = parent.createDiv({ cls: 'santi-tools-sign-in-desc' });
+			desc.appendText(
+				'If the code never arrives, there may have been a typo in your order or an issue on our side. Visit ',
+			);
+			const contactLink = desc.createEl('a', { href: SANTI_CONTACT_URL });
+			// eslint-disable-next-line obsidianmd/ui/sentence-case -- display URL as link label
+			contactLink.setText('santiyounger.com/contact');
+			contactLink.setAttr('target', '_blank');
+			contactLink.setAttr('rel', 'noopener noreferrer');
+			desc.appendText(' for help.');
+		}
 
 		let sendLoginButton: ButtonComponent | undefined;
-		let connectButton: ButtonComponent | undefined;
 
 		const syncSendLoginButton = (): void => {
 			if (!sendLoginButton) {
@@ -604,23 +633,12 @@ export class SantiToolsModal extends Modal {
 				Boolean(this.emailInput.trim()),
 			);
 		};
-		const syncConnectButton = (): void => {
-			if (!connectButton) {
-				return;
-			}
-			this.applySignInButtonLoading(
-				connectButton,
-				this.busy,
-				'Connect account',
-				'Connecting…',
-				Boolean(this.emailInput.trim() && this.codeInput.trim()),
-			);
-		};
 
 		new Setting(parent)
 			.setName('Email')
 			.setDesc('Same address as your purchase.')
 			.addText((text) => {
+				text.inputEl.addClass('santi-tools-sign-in-input');
 				text.setDisabled(this.busy);
 				text
 					.setPlaceholder('you@example.com')
@@ -636,14 +654,14 @@ export class SantiToolsModal extends Modal {
 						}
 						this.emailInput = value;
 						syncSendLoginButton();
-						syncConnectButton();
 					});
 			});
 
-		new Setting(parent).addButton((button) => {
-			sendLoginButton = button;
-			syncSendLoginButton();
-			button.onClick(() => {
+		if (!this.hasSentLoginCode) {
+			new Setting(parent).addButton((button) => {
+				sendLoginButton = button;
+				syncSendLoginButton();
+				button.onClick(() => {
 					const email = this.emailInput.trim();
 					if (!email) {
 						return;
@@ -654,7 +672,8 @@ export class SantiToolsModal extends Modal {
 						this.showNotice(result.message, !result.success);
 					});
 				});
-		});
+			});
+		}
 
 		if (this.hasSentLoginCode) {
 			parent.createEl('p', {
@@ -666,38 +685,20 @@ export class SantiToolsModal extends Modal {
 			new Setting(parent)
 				.setName('6-digit code')
 				.addText((text) => {
+					text.inputEl.addClass('santi-tools-sign-in-input');
 					text.setDisabled(this.busy);
 					text
 						.setPlaceholder('123456')
 						.setValue(this.codeInput)
 						.onChange((value) => {
 							this.codeInput = value;
-							syncConnectButton();
+							if (/^\d{6}$/.test(value.trim())) {
+								void this.runBusy(() => this.verifyLoginCode());
+							}
 						});
 				});
 
-			new Setting(parent).addButton((button) => {
-				connectButton = button;
-				button.setCta();
-				syncConnectButton();
-				button.onClick(() => {
-						void this.runBusy(async () => {
-							const result = await this.plugin.platform.verifyCode(
-								this.emailInput.trim(),
-								this.codeInput.trim(),
-							);
-							if (result.success) {
-								this.hasSentLoginCode = false;
-								this.codeInput = '';
-								this.activeTab = 'plugins';
-								await this.refreshUpdates();
-								this.showNotice(result.message);
-							} else {
-								this.showNotice(result.message, true);
-							}
-						});
-					});
-			});
+			this.appendSignInContactLink(parent);
 		}
 	}
 
