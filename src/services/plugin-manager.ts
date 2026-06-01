@@ -11,7 +11,6 @@ import type {
 } from '../types';
 import {
 	getCatalogEntries,
-	getPluginDisplayOverrides,
 	isComingSoonCatalogPlugin,
 } from './catalog-data';
 import { fetchPluginAssets } from './catalog-fetch';
@@ -116,8 +115,7 @@ export class PluginManager {
 				`You do not have access to ${entry.name} yet. Learn more: ${learnMoreUrl}`,
 			);
 		}
-		const display = getPluginDisplayOverrides();
-		if (isComingSoonCatalogPlugin(display, pluginId)) {
+		if (isComingSoonCatalogPlugin(entry)) {
 			const exists = await resolvePluginDirectoryForCatalogId(
 				this.app,
 				pluginId,

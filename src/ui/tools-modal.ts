@@ -6,21 +6,21 @@ import {
 	Setting,
 	setIcon,
 } from 'obsidian';
-import {
-	APP_DISPLAY_NAME,
-	getPluginDescription,
-	getPluginPreviewUrl,
-	ROYAL_LUX_DESCRIPTION,
-	ROYAL_LUX_PREVIEW_IMAGE_URL,
-} from '../catalog-ui';
+import { APP_DISPLAY_NAME } from '../constants';
 import type SantiObsidianToolsPlugin from '../main';
-import type { PluginCatalogEntry, PluginUpdateInfo } from '../types';
+import type {
+	PluginCatalogEntry,
+	PluginUpdateInfo,
+	ThemeCatalogEntry,
+} from '../types';
 import { RoyalLuxUnlockModal } from './royal-lux-unlock-modal';
 import {
+	getCatalogDescription,
 	getCatalogEntries,
-	getPluginDisplayOverrides,
+	getThemeCatalogEntries,
 	isComingSoonCatalogPlugin,
 } from '../services/catalog-data';
+import { ROYAL_LUX_ENTITLEMENT_ID } from '../common/entitlements';
 import {
 	getBundledRoyalLuxAssets,
 	getRoyalLuxThemeStatus,
@@ -270,20 +270,19 @@ export class SantiToolsModal extends Modal {
 		const installed = await this.plugin.manager.listInstalled();
 		const installedIds = new Set(installed.map((p) => p.pluginId));
 		const catalog = getCatalogEntries();
-		const display = getPluginDisplayOverrides();
 		let visibleCount = 0;
 
 		for (const entry of catalog) {
 			if (!this.plugin.manager.shouldShowCatalogEntry(entry, installedIds)) {
 				continue;
 			}
-			const isComingSoon = isComingSoonCatalogPlugin(display, entry.id);
+			const isComingSoon = isComingSoonCatalogPlugin(entry);
 			const installedInfo = installed.find((p) => p.pluginId === entry.id);
 			if (isComingSoon && !installedInfo) {
 				continue;
 			}
 			visibleCount++;
-			this.renderPluginCard(grid, entry, installed, display);
+			this.renderPluginCard(grid, entry, installed);
 		}
 
 		if (visibleCount === 0) {
@@ -298,16 +297,14 @@ export class SantiToolsModal extends Modal {
 		parent: HTMLElement,
 		entry: PluginCatalogEntry,
 		installed: Array<{ pluginId: string; installedVersion: string }>,
-		display: Record<string, { comingSoon?: boolean }>,
 	): void {
 		const card = parent.createDiv({ cls: 'santi-catalog-card' });
 
-		const previewUrl = getPluginPreviewUrl(entry.id);
-		if (previewUrl) {
+		if (entry.previewImageUrl) {
 			const preview = card.createDiv({ cls: 'santi-catalog-preview' });
 			preview.createEl('img', {
 				attr: {
-					src: previewUrl,
+					src: entry.previewImageUrl,
 					alt: `${entry.name} preview`,
 					loading: 'lazy',
 				},
@@ -317,7 +314,7 @@ export class SantiToolsModal extends Modal {
 		const body = card.createDiv({ cls: 'santi-catalog-body' });
 		body.createEl('h3', { cls: 'santi-catalog-title', text: entry.name });
 
-		const description = getPluginDescription(entry.id, entry.description);
+		const description = getCatalogDescription(entry);
 		if (description) {
 			body.createEl('p', { cls: 'santi-catalog-desc', text: description });
 		}
@@ -325,7 +322,7 @@ export class SantiToolsModal extends Modal {
 		const installedInfo = installed.find((p) => p.pluginId === entry.id);
 		const update = this.updates.find((u) => u.pluginId === entry.id);
 		const hasAccess = this.plugin.platform.hasPluginAccess(entry);
-		const isComingSoon = display[entry.id]?.comingSoon === true;
+		const isComingSoon = isComingSoonCatalogPlugin(entry);
 
 		if (installedInfo?.installedVersion) {
 			body.createEl('p', {
@@ -432,20 +429,37 @@ export class SantiToolsModal extends Modal {
 
 	private async renderThemesPanel(parent: HTMLElement): Promise<void> {
 		const grid = parent.createDiv({ cls: 'santi-catalog-grid' });
-		const themeCard = grid.createDiv({ cls: 'santi-catalog-card' });
+		for (const theme of getThemeCatalogEntries()) {
+			if (theme.id === ROYAL_LUX_ENTITLEMENT_ID) {
+				await this.renderRoyalLuxThemeCard(grid, theme);
+			}
+		}
+	}
 
-		const preview = themeCard.createDiv({ cls: 'santi-catalog-preview' });
-		preview.createEl('img', {
-			attr: {
-				src: ROYAL_LUX_PREVIEW_IMAGE_URL,
-				alt: 'Royal lux preview',
-				loading: 'lazy',
-			},
-		});
+	private async renderRoyalLuxThemeCard(
+		parent: HTMLElement,
+		theme: ThemeCatalogEntry,
+	): Promise<void> {
+		const themeCard = parent.createDiv({ cls: 'santi-catalog-card' });
+
+		if (theme.previewImageUrl) {
+			const preview = themeCard.createDiv({ cls: 'santi-catalog-preview' });
+			preview.createEl('img', {
+				attr: {
+					src: theme.previewImageUrl,
+					alt: `${theme.name} preview`,
+					loading: 'lazy',
+				},
+			});
+		}
 
 		const body = themeCard.createDiv({ cls: 'santi-catalog-body' });
-		body.createEl('h3', { cls: 'santi-catalog-title', text: 'Royal lux' });
-		body.createEl('p', { cls: 'santi-catalog-desc', text: ROYAL_LUX_DESCRIPTION });
+		body.createEl('h3', { cls: 'santi-catalog-title', text: theme.name });
+
+		const description = getCatalogDescription(theme);
+		if (description) {
+			body.createEl('p', { cls: 'santi-catalog-desc', text: description });
+		}
 
 		const status = await getRoyalLuxThemeStatus(this.app);
 		const unlocked = await this.plugin.platform.royalLuxInstallUnlocked();
@@ -468,11 +482,11 @@ export class SantiToolsModal extends Modal {
 
 			const menuBtn = actions.createEl('button', {
 				cls: 'clickable-icon',
-				attr: { 'aria-label': 'Royal lux actions' },
+				attr: { 'aria-label': `${theme.name} actions` },
 			});
 			setIcon(menuBtn, 'more-vertical');
 			menuBtn.addEventListener('click', (event) => {
-				this.showThemeActionsMenu(event);
+				this.showThemeActionsMenu(event, theme.name);
 			});
 		} else if (unlocked) {
 			const installBtn = actions.createEl('button', {
@@ -506,14 +520,16 @@ export class SantiToolsModal extends Modal {
 					await this.render();
 				}).open();
 			});
-			body.createEl('p', {
-				cls: 'santi-catalog-meta',
-				text: 'Available after purchase — share feedback to unlock install.',
-			});
+			if (theme.unlockHint) {
+				body.createEl('p', {
+					cls: 'santi-catalog-meta',
+					text: theme.unlockHint,
+				});
+			}
 		}
 	}
 
-	private showThemeActionsMenu(event: MouseEvent): void {
+	private showThemeActionsMenu(event: MouseEvent, themeName: string): void {
 		const menu = new Menu();
 		menu.addItem((item) => {
 			item.setTitle('Reinstall').onClick(() => {
@@ -535,7 +551,7 @@ export class SantiToolsModal extends Modal {
 				.onClick(() => {
 					void this.runBusy(async () => {
 						await removeRoyalLuxTheme(this.app);
-						this.setStatus('Royal lux removed from this vault.');
+						this.setStatus(`${themeName} removed from this vault.`);
 					});
 				});
 		});

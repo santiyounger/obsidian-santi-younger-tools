@@ -1,13 +1,9 @@
-export interface PluginDisplayEntry {
-	comingSoon?: boolean;
-}
-
-export type PluginDisplayById = Record<string, PluginDisplayEntry>;
-
 export interface PluginCatalogEntry {
 	id: string;
 	name: string;
 	description?: string;
+	previewImageUrl?: string;
+	comingSoon?: boolean;
 	repository: string;
 	obsidianManifestId?: string;
 	sourceType?: 'release' | 'repository';
@@ -19,6 +15,19 @@ export interface PluginCatalogEntry {
 	showWithoutAccess?: boolean;
 	requiredCourseIds?: string[];
 	learnMoreUrl?: string;
+}
+
+export interface ThemeCatalogEntry {
+	id: string;
+	name: string;
+	description?: string;
+	previewImageUrl?: string;
+	unlockHint?: string;
+}
+
+export interface CatalogBundle {
+	plugins: PluginCatalogEntry[];
+	themes: ThemeCatalogEntry[];
 }
 
 export interface PluginInstallState {

@@ -1,18 +1,26 @@
-import type { PluginCatalogEntry, PluginDisplayById } from '../types';
-import bundledCatalog from '../data/catalog/plugins.json';
-import bundledDisplay from '../data/catalog/plugin-display.json';
+import type {
+	CatalogBundle,
+	PluginCatalogEntry,
+	ThemeCatalogEntry,
+} from '../types';
+import bundledCatalog from '../data/catalog/catalog.json';
+
+const catalog = bundledCatalog as CatalogBundle;
 
 export function getCatalogEntries(): PluginCatalogEntry[] {
-	return bundledCatalog as PluginCatalogEntry[];
+	return catalog.plugins;
 }
 
-export function getPluginDisplayOverrides(): PluginDisplayById {
-	return bundledDisplay;
+export function getThemeCatalogEntries(): ThemeCatalogEntry[] {
+	return catalog.themes;
 }
 
-export function isComingSoonCatalogPlugin(
-	display: PluginDisplayById,
-	pluginId: string,
-): boolean {
-	return display[pluginId]?.comingSoon === true;
+export function isComingSoonCatalogPlugin(entry: PluginCatalogEntry): boolean {
+	return entry.comingSoon === true;
+}
+
+export function getCatalogDescription(entry: {
+	description?: string;
+}): string {
+	return entry.description?.trim() ?? '';
 }
