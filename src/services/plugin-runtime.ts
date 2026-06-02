@@ -148,6 +148,70 @@ function isPluginKnownToObsidian(
 	return Boolean(manager.manifests[pluginId] || manager.plugins[pluginId]);
 }
 
+async function disableAndPersistPlugin(
+	manager: ObsidianPluginManager,
+	app: App,
+	pluginId: string,
+): Promise<void> {
+	if (typeof manager.disablePluginAndSave === 'function') {
+		await manager.disablePluginAndSave(pluginId);
+		return;
+	}
+
+	if (manager.enabledPlugins.has(pluginId)) {
+		await manager.disablePlugin(pluginId);
+	}
+
+	const filePath = getCommunityPluginsPath(app);
+	if (!(await adapterExists(app, filePath))) {
+		return;
+	}
+	const list = await readEnabledPluginIdsFromConfig(app);
+	if (!list.includes(pluginId)) {
+		return;
+	}
+	const next = list.filter((id) => id !== pluginId);
+	await writeTextFile(app, filePath, `${JSON.stringify(next, null, 2)}\n`);
+}
+
+/**
+ * Unloads a plugin from Obsidian's runtime and enabled list before deleting its
+ * folder so a fresh install can prompt to enable again.
+ */
+export async function disableCommunityPluginsForIds(
+	app: App,
+	pluginIds: Iterable<string>,
+): Promise<void> {
+	const manager = getObsidianPluginManager(app);
+	const ids = [...new Set(pluginIds)].filter((id) => id.length > 0);
+	if (ids.length === 0) {
+		return;
+	}
+
+	for (const pluginId of ids) {
+		if (!manager) {
+			break;
+		}
+		try {
+			if (
+				manager.enabledPlugins.has(pluginId) ||
+				isPluginKnownToObsidian(manager, pluginId)
+			) {
+				await disableAndPersistPlugin(manager, app, pluginId);
+			}
+		} catch {
+			/* folder may already be gone; still clear in-memory state below */
+		}
+		manager.enabledPlugins.delete(pluginId);
+		delete manager.plugins[pluginId];
+		delete manager.manifests[pluginId];
+	}
+
+	if (manager) {
+		await reloadAllPluginManifests(manager);
+	}
+}
+
 async function enableAndPersistPlugin(
 	manager: ObsidianPluginManager,
 	app: App,
@@ -225,6 +289,11 @@ export async function isCommunityPluginEnabled(
 	app: App,
 	pluginId: string,
 ): Promise<boolean> {
+	const pluginDir = getInstalledPluginDirectory(app, pluginId);
+	if (!(await adapterExists(app, pluginDir))) {
+		return false;
+	}
+
 	const manager = getObsidianPluginManager(app);
 	if (manager?.enabledPlugins.has(pluginId)) {
 		return true;

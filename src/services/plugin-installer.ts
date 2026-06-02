@@ -2,10 +2,17 @@ import { normalizePath, type App } from 'obsidian';
 import type { InstallResult, PluginReleaseAssets } from '../types';
 import { getCommunityPluginsPath, getPluginsPath } from './vault-paths';
 
+import {
+	disableCommunityPluginsForIds,
+	refreshInstalledPluginManifests,
+} from './plugin-runtime';
+
 export {
+	disableCommunityPluginsForIds,
 	enableInstalledCommunityPlugin,
 	isCommunityPluginEnabled,
 	registerInstalledPluginWithObsidian,
+	refreshInstalledPluginManifests,
 } from './plugin-runtime';
 
 async function adapterExists(app: App, targetPath: string): Promise<boolean> {
@@ -260,7 +267,16 @@ export async function removePlugin(
 	const manifestId = resolvedDir
 		? await readManifestPluginId(app, resolvedDir)
 		: undefined;
+	const idsToDisable = new Set<string>([catalogPluginId]);
+	if (alternateManifestId) {
+		idsToDisable.add(alternateManifestId);
+	}
+	if (manifestId) {
+		idsToDisable.add(manifestId);
+	}
+	await disableCommunityPluginsForIds(app, idsToDisable);
 	await removePath(app, pluginDir);
+	await refreshInstalledPluginManifests(app);
 
 	const filePath = getCommunityPluginsPath(app);
 	if (!(await adapterExists(app, filePath))) {
@@ -278,10 +294,7 @@ export async function removePlugin(
 		) {
 			return;
 		}
-		const idsToDrop = new Set<string>([catalogPluginId]);
-		if (manifestId) {
-			idsToDrop.add(manifestId);
-		}
+		const idsToDrop = new Set(idsToDisable);
 		const next = parsed.filter((id) => !idsToDrop.has(id));
 		if (next.length === parsed.length) {
 			return;

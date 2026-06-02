@@ -20,7 +20,7 @@ After editing, run `npm run build` (or `npm run dev`) and reload Obsidian. Users
 | Field | Required | Purpose |
 | --- | --- | --- |
 | `id` | yes | Catalog id; must match platform `grantedPluginIds` for paid items. Do not rename after release. |
-| `name` | yes | Card title. |
+| `name` | yes | Card title. Must match the product manifest `name` exactly (preserve capitalization). Do not sentence-case product names. |
 | `description` | no | Card blurb. |
 | `previewImageUrl` | no | Card image (HTTPS URL, e.g. CDN). Omit for text-only cards. |
 | `repository` | yes | GitHub repo URL for release downloads. |
@@ -38,7 +38,7 @@ Install files (`main.js`, `manifest.json`) come from GitHub or platform releases
 | Field | Required | Purpose |
 | --- | --- | --- |
 | `id` | yes | Must match platform theme grant id (e.g. `royal-lux`). |
-| `name` | yes | Card title. |
+| `name` | yes | Card title. Must match the product manifest `name` exactly (preserve capitalization). Do not sentence-case product names. |
 | `description` | no | Card blurb. |
 | `previewImageUrl` | no | Card image URL. |
 

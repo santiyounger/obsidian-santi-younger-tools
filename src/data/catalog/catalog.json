@@ -2,7 +2,7 @@
 	"plugins": [
 		{
 			"id": "branch-writing",
-			"name": "Branch writing",
+			"name": "Branch Writing",
 			"description": "Write your ideas in pieces and organize them in a tree. Edit side-by-side with keyboard shortcuts.",
 			"previewImageUrl": "https://santiyounger.b-cdn.net/SY-platform/2026-02-11-20-05-25.png?width=640&format=webp&quality=78",
 			"repository": "https://github.com/santiyounger/branch-writing",
@@ -43,7 +43,7 @@
 	"themes": [
 		{
 			"id": "royal-lux",
-			"name": "Royal lux",
+			"name": "Royal Lux",
 			"description": "Dark mode theme with a dark purple style.",
 			"previewImageUrl": "https://santiyounger.b-cdn.net/sales-pages/2026-04-30%2009-20-28.png"
 		}
