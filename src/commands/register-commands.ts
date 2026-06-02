@@ -1,4 +1,6 @@
 import { Notice } from 'obsidian';
+import { runCheckPluginUpdatesFlow } from './check-plugin-updates';
+import { runCheckThemeUpdatesFlow } from './check-theme-updates';
 import { openSantiToolsModal } from '../ui/tools-modal';
 import type SantiObsidianToolsPlugin from '../main';
 
@@ -24,16 +26,7 @@ export function registerCommands(plugin: SantiObsidianToolsPlugin): void {
 					openSantiToolsModal(plugin);
 					return true;
 				}
-				void plugin.syncPlatformAccess().then(async () => {
-					const updates = await plugin.manager.checkUpdates();
-					const count = updates.filter((u) => u.updateAvailable).length;
-					new Notice(
-						count > 0
-							? `${count} plugin update(s) available. Run Manage tools to install.`
-							: 'All catalog plugins are up to date.',
-					);
-					openSantiToolsModal(plugin);
-				}).catch((error) => {
+				void runCheckPluginUpdatesFlow(plugin).catch((error) => {
 					const message =
 						error instanceof Error ? error.message : String(error);
 					new Notice(message, 8000);
@@ -57,16 +50,7 @@ export function registerCommands(plugin: SantiObsidianToolsPlugin): void {
 					openSantiToolsModal(plugin, { tab: 'themes' });
 					return true;
 				}
-				void plugin.syncPlatformAccess().then(async () => {
-					const updates = await plugin.themeManager.checkUpdates();
-					const count = updates.filter((u) => u.updateAvailable).length;
-					new Notice(
-						count > 0
-							? `${count} theme update(s) available. Run Manage tools to install.`
-							: 'All catalog themes are up to date.',
-					);
-					openSantiToolsModal(plugin, { tab: 'themes' });
-				}).catch((error) => {
+				void runCheckThemeUpdatesFlow(plugin).catch((error) => {
 					const message =
 						error instanceof Error ? error.message : String(error);
 					new Notice(message, 8000);

@@ -324,6 +324,17 @@
 	margin-top: var(--size-4-4);
 }
 
+.santi-updates-prompt-list {
+	margin: var(--size-4-2) 0 0;
+	padding-left: 1.25rem;
+	text-align: left;
+	line-height: var(--line-height-normal);
+}
+
+.santi-updates-prompt-list li {
+	margin: var(--size-2-1) 0;
+}
+
 .santi-catalog-preview {
 	aspect-ratio: 16 / 9;
 	background: var(--background-modifier-form-field);

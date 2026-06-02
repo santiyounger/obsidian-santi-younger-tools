@@ -6,7 +6,11 @@ import {
 	Setting,
 	setIcon,
 } from 'obsidian';
-import { APP_DISPLAY_NAME, SANTI_CONTACT_URL } from '../constants';
+import {
+	APP_DISPLAY_NAME,
+	SANTI_CONTACT_URL,
+	SANTI_TESTIMONIAL_URL,
+} from '../constants';
 import { ROYAL_LUX_ENTITLEMENT_ID } from '../common/entitlements';
 import type SantiObsidianToolsPlugin from '../main';
 import {
@@ -28,8 +32,13 @@ import type {
 	ThemeCatalogEntry,
 	ThemeInstallResult,
 	ThemeStatusInfo,
+	ThemeUpdateInfo,
 } from '../types';
 import { applyDevEmailBlur } from './dev-email-blur';
+import {
+	promptCatalogPluginUpdatesIfNeeded,
+	promptCatalogThemeUpdatesIfNeeded,
+} from './catalog-updates-prompt-modal';
 import {
 	InstallEnablePromptModal,
 	ThemeInstallEnablePromptModal,
@@ -53,6 +62,7 @@ export class SantiToolsModal extends Modal {
 	private codeInput = '';
 	private hasSentLoginCode = false;
 	private updates: PluginUpdateInfo[] = [];
+	private themeUpdates: ThemeUpdateInfo[] = [];
 
 	constructor(
 		private plugin: SantiObsidianToolsPlugin,
@@ -102,7 +112,7 @@ export class SantiToolsModal extends Modal {
 		if (this.plugin.platform.hasAnyPluginCatalogAccess()) {
 			return 'plugins';
 		}
-		if (this.plugin.platform.hasAnyThemeCatalogAccess()) {
+		if (getThemeCatalogEntries().length > 0) {
 			return 'themes';
 		}
 		return 'account';
@@ -112,6 +122,7 @@ export class SantiToolsModal extends Modal {
 		try {
 			if (!this.isLoggedIn()) {
 				this.updates = [];
+				this.themeUpdates = [];
 				return;
 			}
 			const installed = await this.plugin.manager.listInstalled();
@@ -123,11 +134,78 @@ export class SantiToolsModal extends Modal {
 		} catch {
 			this.updates = this.plugin.data.pluginUpdates ?? [];
 		}
+		await this.refreshThemeUpdates();
+	}
+
+	private async refreshThemeUpdates(): Promise<void> {
+		try {
+			if (!this.isLoggedIn()) {
+				this.themeUpdates = [];
+				return;
+			}
+			const status = await getRoyalLuxThemeStatus(this.app);
+			if (status.installedVersion) {
+				this.themeUpdates = await this.syncAccessAndCheckThemeUpdates();
+			} else {
+				this.themeUpdates = [];
+			}
+		} catch {
+			this.themeUpdates = [];
+		}
 	}
 
 	private async syncAccessAndCheckPluginUpdates(): Promise<PluginUpdateInfo[]> {
 		await this.plugin.syncPlatformAccess();
 		return this.plugin.manager.checkUpdates();
+	}
+
+	private showPluginUpdatesCheckResult(): void {
+		const prompted = promptCatalogPluginUpdatesIfNeeded(
+			this.app,
+			this.updates,
+			{
+				onUpdateAll: async () => {
+					await this.plugin.manager.updateAllWithNotices();
+					await this.refreshUpdates();
+					await this.render();
+				},
+				onDecline: () => {
+					this.showNotice(
+						'Update plugins individually from each card when you are ready.',
+					);
+				},
+			},
+		);
+		if (!prompted) {
+			this.showNotice('All catalog plugins are up to date.');
+		}
+	}
+
+	private async syncAccessAndCheckThemeUpdates(): Promise<ThemeUpdateInfo[]> {
+		await this.plugin.syncPlatformAccess();
+		return this.plugin.themeManager.checkUpdates();
+	}
+
+	private showThemeUpdatesCheckResult(): void {
+		const prompted = promptCatalogThemeUpdatesIfNeeded(
+			this.app,
+			this.themeUpdates,
+			{
+				onUpdateAll: async () => {
+					await this.plugin.themeManager.updateAllWithNotices();
+					await this.refreshThemeUpdates();
+					await this.render();
+				},
+				onDecline: () => {
+					this.showNotice(
+						'Update themes individually from each card when you are ready.',
+					);
+				},
+			},
+		);
+		if (!prompted) {
+			this.showNotice('All catalog themes are up to date.');
+		}
 	}
 
 	private async refreshAndRender(): Promise<void> {
@@ -192,6 +270,7 @@ export class SantiToolsModal extends Modal {
 		}
 
 		this.showNotice(result.message);
+		await this.refreshThemeUpdates();
 		void this.plugin.refreshInstallCommandVisibility();
 
 		if (await isCssThemeActive(this.app, result.themeName)) {
@@ -301,7 +380,7 @@ export class SantiToolsModal extends Modal {
 		}
 
 		const showPluginsTab = this.plugin.platform.hasAnyPluginCatalogAccess();
-		const showThemesTab = this.plugin.platform.hasAnyThemeCatalogAccess();
+		const showThemesTab = getThemeCatalogEntries().length > 0;
 		if (this.activeTab === 'themes' && !showThemesTab) {
 			this.activeTab = showPluginsTab ? 'plugins' : 'account';
 		}
@@ -410,12 +489,7 @@ export class SantiToolsModal extends Modal {
 			onClick: () =>
 				this.runBusy('check-updates', async () => {
 					this.updates = await this.syncAccessAndCheckPluginUpdates();
-					const count = this.updates.filter((u) => u.updateAvailable).length;
-					this.showNotice(
-						count > 0
-							? `${count} update(s) available.`
-							: 'All catalog plugins are up to date.',
-					);
+					this.showPluginUpdatesCheckResult();
 				}),
 		});
 
@@ -572,8 +646,8 @@ export class SantiToolsModal extends Modal {
 		menu.addItem((item) => {
 			item.setTitle('Check for updates').onClick(() => {
 				void this.runBusy('check-updates', async () => {
-					await this.syncAccessAndCheckPluginUpdates();
-					this.showNotice('Access synced and update check finished.');
+					this.updates = await this.syncAccessAndCheckPluginUpdates();
+					this.showPluginUpdatesCheckResult();
 				});
 			});
 		});
@@ -593,18 +667,48 @@ export class SantiToolsModal extends Modal {
 	}
 
 	private async renderThemesPanel(parent: HTMLElement): Promise<void> {
+		const pendingUpdates = this.themeUpdates.filter((u) => u.updateAvailable);
+		const toolbar = parent.createDiv({ cls: 'santi-tools-toolbar' });
+
+		if (pendingUpdates.length > 0) {
+			this.createActionButton(toolbar, {
+				cls: 'mod-cta',
+				idleText: 'Update all',
+				onClick: () =>
+					this.runBusy('update-all-themes', async () => {
+						await this.plugin.themeManager.updateAllWithNotices();
+						await this.refreshThemeUpdates();
+					}),
+			});
+		}
+
+		this.createActionButton(toolbar, {
+			idleText: 'Check for updates',
+			onClick: () =>
+				this.runBusy('check-theme-updates', async () => {
+					this.themeUpdates = await this.syncAccessAndCheckThemeUpdates();
+					this.showThemeUpdatesCheckResult();
+				}),
+		});
+
 		const grid = parent.createDiv({ cls: 'santi-catalog-grid' });
 
 		for (const theme of getThemeCatalogEntries()) {
 			if (theme.id !== ROYAL_LUX_ENTITLEMENT_ID) {
 				continue;
 			}
-			if (!this.plugin.platform.shouldShowThemeCatalogEntry(theme.id)) {
-				continue;
-			}
 			const status = await getRoyalLuxThemeStatus(this.app);
 			await this.renderRoyalLuxThemeCard(grid, theme, status);
 		}
+
+		this.maybeRenderPanelBusyOverlay(
+			parent,
+			this.isBusy('update-all-themes')
+				? 'Updating all…'
+				: this.isBusy('check-theme-updates')
+					? 'Syncing access and checking for updates…'
+					: null,
+		);
 	}
 
 	private async renderRoyalLuxThemeCard(
@@ -637,6 +741,9 @@ export class SantiToolsModal extends Modal {
 		}
 
 		const actions = body.createDiv({ cls: 'santi-catalog-actions' });
+		const hasAccess = this.plugin.platform.hasThemeAccess(theme.id);
+		const update = this.themeUpdates.find((u) => u.themeId === theme.id);
+		const isUpdateAvailable = Boolean(update?.updateAvailable);
 
 		if (status.installedVersion) {
 			body.createEl('p', {
@@ -644,22 +751,53 @@ export class SantiToolsModal extends Modal {
 				text: `Version ${status.installedVersion}`,
 			});
 
-			const installedLabel = actions.createDiv({
-				cls: 'santi-catalog-installed',
-			});
-			const checkIcon = installedLabel.createSpan({
-				attr: { 'aria-hidden': 'true' },
-			});
-			setIcon(checkIcon, 'check');
-			installedLabel.createSpan({ text: 'Installed' });
+			if (isUpdateAvailable) {
+				this.createActionButton(actions, {
+					cls: 'mod-cta',
+					idleText: 'Update',
+					onClick: () =>
+						this.runBusy(installBusyKey, async () => {
+							const result = await this.plugin.themeManager.installTheme(
+								theme.id,
+							);
+							await this.handleThemeInstallResult(theme, result);
+							await this.refreshThemeUpdates();
+						}),
+				});
+			} else {
+				const installedLabel = actions.createDiv({
+					cls: 'santi-catalog-installed',
+				});
+				const checkIcon = installedLabel.createSpan({
+					attr: { 'aria-hidden': 'true' },
+				});
+				setIcon(checkIcon, 'check');
+				installedLabel.createSpan({ text: 'Installed' });
 
-			const menuBtn = actions.createEl('button', {
-				cls: 'clickable-icon',
-				attr: { 'aria-label': `${theme.name} actions` },
+				const menuBtn = actions.createEl('button', {
+					cls: 'clickable-icon',
+					attr: { 'aria-label': `${theme.name} actions` },
+				});
+				setIcon(menuBtn, 'more-vertical');
+				menuBtn.addEventListener('click', (event) => {
+					this.showThemeActionsMenu(event, theme);
+				});
+			}
+		} else if (!hasAccess) {
+			body.createEl('p', {
+				cls: 'santi-catalog-meta',
+				text: 'Unlock this bonus and log it as a free bonus from your account.',
 			});
-			setIcon(menuBtn, 'more-vertical');
-			menuBtn.addEventListener('click', (event) => {
-				this.showThemeActionsMenu(event, theme.name);
+			this.createActionButton(actions, {
+				cls: 'mod-cta',
+				idleText: 'Unlock this bonus',
+				onClick: () => {
+					window.open(
+						SANTI_TESTIMONIAL_URL,
+						'_blank',
+						'noopener,noreferrer',
+					);
+				},
 			});
 		} else {
 			this.createActionButton(actions, {
@@ -677,7 +815,9 @@ export class SantiToolsModal extends Modal {
 
 		const cardBusyText = this.isBusy(installBusyKey)
 			? status.installedVersion
-				? 'Reinstalling…'
+				? isUpdateAvailable
+					? 'Updating…'
+					: 'Reinstalling…'
 				: 'Installing…'
 			: this.isBusy(removeBusyKey)
 				? 'Removing…'
@@ -688,11 +828,22 @@ export class SantiToolsModal extends Modal {
 		}
 	}
 
-	private showThemeActionsMenu(event: MouseEvent, themeName: string): void {
-		const themeId = ROYAL_LUX_ENTITLEMENT_ID;
+	private showThemeActionsMenu(
+		event: MouseEvent,
+		theme: ThemeCatalogEntry,
+	): void {
+		const themeId = theme.id;
 		const installBusyKey = `install-theme:${themeId}`;
 		const removeBusyKey = `remove-theme:${themeId}`;
 		const menu = new Menu();
+		menu.addItem((item) => {
+			item.setTitle('Check for updates').onClick(() => {
+				void this.runBusy('check-theme-updates', async () => {
+					this.themeUpdates = await this.syncAccessAndCheckThemeUpdates();
+					this.showThemeUpdatesCheckResult();
+				});
+			});
+		});
 		menu.addItem((item) => {
 			item.setTitle('Reinstall').onClick(() => {
 				void this.runBusy(installBusyKey, async () => {
@@ -714,7 +865,8 @@ export class SantiToolsModal extends Modal {
 				.onClick(() => {
 					void this.runBusy(removeBusyKey, async () => {
 						await removeRoyalLuxTheme(this.app);
-						this.showNotice(`${themeName} removed from this vault.`);
+						this.showNotice(`${theme.name} removed from this vault.`);
+						await this.refreshThemeUpdates();
 					});
 				});
 		});
