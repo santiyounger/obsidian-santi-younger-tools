@@ -7,30 +7,33 @@ import {
 	setIcon,
 } from 'obsidian';
 import { APP_DISPLAY_NAME, SANTI_CONTACT_URL } from '../constants';
+import { ROYAL_LUX_ENTITLEMENT_ID } from '../common/entitlements';
 import type SantiObsidianToolsPlugin from '../main';
-import type {
-	PluginCatalogEntry,
-	PluginUpdateInfo,
-	ThemeCatalogEntry,
-	ThemeStatusInfo,
-} from '../types';
 import {
 	getCatalogDescription,
 	getCatalogEntries,
 	getThemeCatalogEntries,
 	isComingSoonCatalogPlugin,
 } from '../services/catalog-data';
-import { ROYAL_LUX_ENTITLEMENT_ID } from '../common/entitlements';
+import { isCommunityPluginEnabled } from '../services/plugin-runtime';
 import {
-	getBundledRoyalLuxAssets,
 	getRoyalLuxThemeStatus,
-	installObsidianTheme,
+	isCssThemeActive,
 	removeRoyalLuxTheme,
 } from '../services/theme-installer';
-import { isCommunityPluginEnabled } from '../services/plugin-runtime';
-import type { InstallResult } from '../types';
-import { InstallEnablePromptModal } from './install-enable-prompt-modal';
+import type {
+	InstallResult,
+	PluginCatalogEntry,
+	PluginUpdateInfo,
+	ThemeCatalogEntry,
+	ThemeInstallResult,
+	ThemeStatusInfo,
+} from '../types';
 import { applyDevEmailBlur } from './dev-email-blur';
+import {
+	InstallEnablePromptModal,
+	ThemeInstallEnablePromptModal,
+} from './install-enable-prompt-modal';
 import { renderLoadingIndicator, renderLoadingOverlay } from './loading-indicator';
 
 type ToolsTab = 'plugins' | 'themes' | 'account';
@@ -113,13 +116,18 @@ export class SantiToolsModal extends Modal {
 			}
 			const installed = await this.plugin.manager.listInstalled();
 			if (installed.length > 0) {
-				this.updates = await this.plugin.manager.checkUpdates();
+				this.updates = await this.syncAccessAndCheckPluginUpdates();
 			} else {
 				this.updates = this.plugin.data.pluginUpdates ?? [];
 			}
 		} catch {
 			this.updates = this.plugin.data.pluginUpdates ?? [];
 		}
+	}
+
+	private async syncAccessAndCheckPluginUpdates(): Promise<PluginUpdateInfo[]> {
+		await this.plugin.syncPlatformAccess();
+		return this.plugin.manager.checkUpdates();
 	}
 
 	private async refreshAndRender(): Promise<void> {
@@ -171,6 +179,29 @@ export class SantiToolsModal extends Modal {
 			this.app,
 			entry.name,
 			result.pluginId,
+		).open();
+	}
+
+	private async handleThemeInstallResult(
+		theme: ThemeCatalogEntry,
+		result: ThemeInstallResult,
+	): Promise<void> {
+		if (!result.success) {
+			this.showNotice(result.message, true);
+			return;
+		}
+
+		this.showNotice(result.message);
+		void this.plugin.refreshInstallCommandVisibility();
+
+		if (await isCssThemeActive(this.app, result.themeName)) {
+			return;
+		}
+
+		new ThemeInstallEnablePromptModal(
+			this.app,
+			theme.name,
+			result.themeName,
 		).open();
 	}
 
@@ -378,7 +409,7 @@ export class SantiToolsModal extends Modal {
 			idleText: 'Check for updates',
 			onClick: () =>
 				this.runBusy('check-updates', async () => {
-					this.updates = await this.plugin.manager.checkUpdates();
+					this.updates = await this.syncAccessAndCheckPluginUpdates();
 					const count = this.updates.filter((u) => u.updateAvailable).length;
 					this.showNotice(
 						count > 0
@@ -419,7 +450,7 @@ export class SantiToolsModal extends Modal {
 			this.isBusy('update-all')
 				? 'Updating all…'
 				: this.isBusy('check-updates')
-					? 'Checking for updates…'
+					? 'Syncing access and checking for updates…'
 					: null,
 		);
 	}
@@ -541,8 +572,8 @@ export class SantiToolsModal extends Modal {
 		menu.addItem((item) => {
 			item.setTitle('Check for updates').onClick(() => {
 				void this.runBusy('check-updates', async () => {
-					this.updates = await this.plugin.manager.checkUpdates();
-					this.showNotice('Update check finished.');
+					await this.syncAccessAndCheckPluginUpdates();
+					this.showNotice('Access synced and update check finished.');
 				});
 			});
 		});
@@ -636,13 +667,10 @@ export class SantiToolsModal extends Modal {
 				idleText: 'Install',
 				onClick: () =>
 					this.runBusy(installBusyKey, async () => {
-						const assets = getBundledRoyalLuxAssets();
-						const result = await installObsidianTheme(
-							this.app,
-							assets.manifestJson,
-							assets.themeCss,
+						const result = await this.plugin.themeManager.installTheme(
+							theme.id,
 						);
-						this.showNotice(result.message, !result.success);
+						await this.handleThemeInstallResult(theme, result);
 					}),
 			});
 		}
@@ -668,13 +696,14 @@ export class SantiToolsModal extends Modal {
 		menu.addItem((item) => {
 			item.setTitle('Reinstall').onClick(() => {
 				void this.runBusy(installBusyKey, async () => {
-					const assets = getBundledRoyalLuxAssets();
-					const result = await installObsidianTheme(
-						this.app,
-						assets.manifestJson,
-						assets.themeCss,
+					const themeEntry = getThemeCatalogEntries().find(
+						(entry) => entry.id === themeId,
 					);
-					this.showNotice(result.message, !result.success);
+					if (!themeEntry) {
+						return;
+					}
+					const result = await this.plugin.themeManager.installTheme(themeId);
+					await this.handleThemeInstallResult(themeEntry, result);
 				});
 			});
 		});
@@ -872,7 +901,7 @@ export class SantiToolsModal extends Modal {
 				.setDisabled(this.isBusy())
 				.onClick(() => {
 					void this.runBusy('refresh-access', async () => {
-						await this.plugin.platform.refreshEntitlements();
+						await this.plugin.syncPlatformAccess();
 						this.showNotice('Access refreshed.');
 					});
 				});

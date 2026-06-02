@@ -100,6 +100,12 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 		this.hasInstalledCatalogThemes = flags.hasInstalledCatalogThemes;
 	}
 
+	/** Re-fetch grants from the platform and refresh tab/command visibility. */
+	async syncPlatformAccess(): Promise<void> {
+		await this.platform.refreshEntitlements();
+		await this.refreshInstallCommandVisibility();
+	}
+
 	/** After reload, refresh entitlements then install pending catalog updates. */
 	private scheduleCatalogAutoUpdateOnLoad(): void {
 		const timer = window.setTimeout(() => {

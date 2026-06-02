@@ -62,7 +62,10 @@ export class ThemeManager {
 		return updates;
 	}
 
-	async installTheme(themeId: string): Promise<ThemeInstallResult> {
+	async installTheme(
+		themeId: string,
+		options?: { activate?: boolean },
+	): Promise<ThemeInstallResult> {
 		this.requireLoggedIn();
 		const entry = getThemeCatalogEntries().find((item) => item.id === themeId);
 		if (!entry) {
@@ -79,6 +82,7 @@ export class ThemeManager {
 			this.app,
 			assets.manifestJson,
 			assets.themeCss,
+			options,
 		);
 		if (result.success) {
 			this.notifyInstallLayoutChange();

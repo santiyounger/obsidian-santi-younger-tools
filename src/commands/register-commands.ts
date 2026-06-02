@@ -24,13 +24,19 @@ export function registerCommands(plugin: SantiObsidianToolsPlugin): void {
 					openSantiToolsModal(plugin);
 					return true;
 				}
-				void plugin.manager.checkUpdates().then((updates) => {
+				void plugin.syncPlatformAccess().then(async () => {
+					const updates = await plugin.manager.checkUpdates();
 					const count = updates.filter((u) => u.updateAvailable).length;
 					new Notice(
 						count > 0
 							? `${count} plugin update(s) available. Run Manage tools to install.`
 							: 'All catalog plugins are up to date.',
 					);
+					openSantiToolsModal(plugin);
+				}).catch((error) => {
+					const message =
+						error instanceof Error ? error.message : String(error);
+					new Notice(message, 8000);
 					openSantiToolsModal(plugin);
 				});
 			}
@@ -51,13 +57,19 @@ export function registerCommands(plugin: SantiObsidianToolsPlugin): void {
 					openSantiToolsModal(plugin, { tab: 'themes' });
 					return true;
 				}
-				void plugin.themeManager.checkUpdates().then((updates) => {
+				void plugin.syncPlatformAccess().then(async () => {
+					const updates = await plugin.themeManager.checkUpdates();
 					const count = updates.filter((u) => u.updateAvailable).length;
 					new Notice(
 						count > 0
 							? `${count} theme update(s) available. Run Manage tools to install.`
 							: 'All catalog themes are up to date.',
 					);
+					openSantiToolsModal(plugin, { tab: 'themes' });
+				}).catch((error) => {
+					const message =
+						error instanceof Error ? error.message : String(error);
+					new Notice(message, 8000);
 					openSantiToolsModal(plugin, { tab: 'themes' });
 				});
 			}

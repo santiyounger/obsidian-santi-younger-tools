@@ -85,6 +85,42 @@ async function readThemeManifest(
 	return parsed;
 }
 
+async function readAppearance(app: App): Promise<Record<string, unknown>> {
+	const appearancePath = getAppearancePath(app);
+	if (!(await adapterExists(app, appearancePath))) {
+		return {};
+	}
+	const raw = (await readTextFile(app, appearancePath)).trim();
+	if (!raw) {
+		return {};
+	}
+	return JSON.parse(raw) as Record<string, unknown>;
+}
+
+export async function isCssThemeActive(
+	app: App,
+	themeName: string,
+): Promise<boolean> {
+	try {
+		const appearance = await readAppearance(app);
+		const active = appearance.cssTheme;
+		return typeof active === 'string' && active === themeName;
+	} catch {
+		return false;
+	}
+}
+
+export async function enableCssTheme(
+	app: App,
+	themeName: string,
+): Promise<{ enabled: boolean; requiresReload: boolean }> {
+	await writeAppearanceTheme(app, themeName);
+	if (await isCssThemeActive(app, themeName)) {
+		return { enabled: true, requiresReload: true };
+	}
+	throw new Error('Obsidian did not save the theme selection.');
+}
+
 async function writeAppearanceTheme(
 	app: App,
 	themeName: string,
@@ -200,6 +236,7 @@ export async function installObsidianTheme(
 	app: App,
 	manifestJson: string,
 	themeCss: string,
+	options?: { activate?: boolean },
 ): Promise<ThemeInstallResult> {
 	const manifest = JSON.parse(manifestJson) as ThemeManifest;
 	const themesRoot = getThemesPath(app);
@@ -207,6 +244,7 @@ export async function installObsidianTheme(
 	const tempDir = normalizePath(`${themeDir}.tmp`);
 	const backupDir = normalizePath(`${themeDir}.backup-${Date.now()}`);
 	const hadExistingInstall = await adapterExists(app, themeDir);
+	const wasActiveBefore = await isCssThemeActive(app, manifest.name);
 
 	await app.vault.adapter.mkdir(themesRoot);
 	await removePath(app, tempDir);
@@ -222,7 +260,11 @@ export async function installObsidianTheme(
 		if (hadExistingInstall) {
 			await removePath(app, backupDir);
 		}
-		await writeAppearanceTheme(app, manifest.name);
+		const shouldActivate =
+			options?.activate === true || wasActiveBefore;
+		if (shouldActivate) {
+			await writeAppearanceTheme(app, manifest.name);
+		}
 		return {
 			themeName: manifest.name,
 			version: manifest.version,
