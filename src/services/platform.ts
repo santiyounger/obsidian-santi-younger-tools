@@ -8,6 +8,7 @@ import { buildPlatformApiHeaders } from '../common/platform-fetch-headers';
 import { parseAllPluginListIdsFromInstallerAccessPayload } from '../common/parseGrantedPluginIdsFromApiPayload';
 import { parseGrantedPluginIdsFromApiPayload } from '../common/parseGrantedPluginIdsFromApiPayload';
 import { parseGrantedThemeIdsFromApiPayload } from '../common/parseGrantedThemeIdsFromApiPayload';
+import { getCatalogEntries, getThemeCatalogEntries } from './catalog-data';
 import type {
 	PlatformConnectionState,
 	PlatformSessionState,
@@ -66,18 +67,44 @@ export class PlatformService {
 	}
 
 	hasThemeAccess(themeId: string): boolean {
+		return userHasThemeEntitlement(themeId, this.getEffectiveThemeGrantIds());
+	}
+
+	/** True when the signed-in account has access to at least one catalog plugin. */
+	hasAnyPluginCatalogAccess(): boolean {
 		const session = this.getSession();
 		if (!session) {
 			return false;
 		}
-		return userHasThemeEntitlement(themeId, session.grantedThemeIds);
+		return getCatalogEntries().some((entry) =>
+			userHasPluginEntitlement(entry, session.grantedPluginIds),
+		);
 	}
 
-	shouldShowThemeCatalogEntry(themeId: string, isInstalled: boolean): boolean {
-		if (isInstalled) {
-			return true;
+	/** True when the signed-in account has access to at least one catalog theme. */
+	hasAnyThemeCatalogAccess(): boolean {
+		const effectiveThemeIds = this.getEffectiveThemeGrantIds();
+		if (effectiveThemeIds.length === 0) {
+			return false;
 		}
+		return getThemeCatalogEntries().some((theme) =>
+			userHasThemeEntitlement(theme.id, effectiveThemeIds),
+		);
+	}
+
+	shouldShowThemeCatalogEntry(themeId: string): boolean {
 		return this.hasThemeAccess(themeId);
+	}
+
+	private getEffectiveThemeGrantIds(): string[] {
+		const session = this.getSession();
+		if (!session) {
+			return [];
+		}
+		return mergeInstallerThemeGrants(
+			session.grantedThemeIds ?? [],
+			session.grantedPluginIds ?? [],
+		);
 	}
 
 	private async platformRequest(

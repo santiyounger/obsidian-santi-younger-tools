@@ -1,8 +1,10 @@
 import { normalizePath, type App } from 'obsidian';
 import { isUpdateAvailable } from '../common/versioning';
+import { ROYAL_LUX_ENTITLEMENT_ID } from '../common/entitlements';
 import type { ThemeInstallResult, ThemeStatusInfo } from '../types';
 import royalLuxManifest from '../data/themes/royal-lux/manifest.json';
 import royalLuxThemeCss from '../data/themes/royal-lux/theme.css';
+import { getThemeCatalogEntries } from './catalog-data';
 import { getAppearancePath, getThemesPath } from './vault-paths';
 
 interface ThemeManifest {
@@ -10,8 +12,27 @@ interface ThemeManifest {
 	version: string;
 }
 
+interface BundledThemeDefinition {
+	manifest: ThemeManifest;
+	manifestJson: string;
+	themeCss: string;
+}
+
 const bundledRoyalLux: ThemeManifest = royalLuxManifest;
 const bundledRoyalLuxCss = royalLuxThemeCss;
+
+const bundledThemesByCatalogId: Record<string, BundledThemeDefinition> = {
+	[ROYAL_LUX_ENTITLEMENT_ID]: {
+		manifest: bundledRoyalLux,
+		manifestJson: JSON.stringify(bundledRoyalLux, null, 2),
+		themeCss: bundledRoyalLuxCss,
+	},
+};
+
+function resolveBundledTheme(themeId: string): BundledThemeDefinition | null {
+	const key = themeId.trim().toLowerCase();
+	return bundledThemesByCatalogId[key] ?? null;
+}
 
 async function adapterExists(app: App, targetPath: string): Promise<boolean> {
 	return app.vault.adapter.exists(normalizePath(targetPath));
@@ -92,18 +113,43 @@ export function getBundledRoyalLuxAssets(): {
 	manifestJson: string;
 	themeCss: string;
 } {
+	const bundled = resolveBundledTheme(ROYAL_LUX_ENTITLEMENT_ID);
+	if (!bundled) {
+		return {
+			manifestJson: JSON.stringify(bundledRoyalLux, null, 2),
+			themeCss: bundledRoyalLuxCss,
+		};
+	}
 	return {
-		manifestJson: JSON.stringify(bundledRoyalLux, null, 2),
-		themeCss: bundledRoyalLuxCss,
+		manifestJson: bundled.manifestJson,
+		themeCss: bundled.themeCss,
 	};
 }
 
-export async function getRoyalLuxThemeStatus(
+export function getBundledThemeAssets(
+	themeId: string,
+): { manifestJson: string; themeCss: string } | null {
+	const bundled = resolveBundledTheme(themeId);
+	if (!bundled) {
+		return null;
+	}
+	return {
+		manifestJson: bundled.manifestJson,
+		themeCss: bundled.themeCss,
+	};
+}
+
+export async function getCatalogThemeStatus(
 	app: App,
-): Promise<ThemeStatusInfo> {
+	themeId: string,
+): Promise<ThemeStatusInfo | null> {
+	const bundled = resolveBundledTheme(themeId);
+	if (!bundled) {
+		return null;
+	}
 	const themesRoot = getThemesPath(app);
 	const installedManifestPath = normalizePath(
-		`${themesRoot}/${bundledRoyalLux.name}/manifest.json`,
+		`${themesRoot}/${bundled.manifest.name}/manifest.json`,
 	);
 	let installedVersion: string | undefined;
 	try {
@@ -113,21 +159,41 @@ export async function getRoyalLuxThemeStatus(
 		installedVersion = undefined;
 	}
 	return {
+		themeName: bundled.manifest.name,
+		availableVersion: bundled.manifest.version,
+		...(installedVersion ? { installedVersion } : {}),
+	};
+}
+
+export async function getRoyalLuxThemeStatus(
+	app: App,
+): Promise<ThemeStatusInfo> {
+	const status = await getCatalogThemeStatus(app, ROYAL_LUX_ENTITLEMENT_ID);
+	if (status) {
+		return status;
+	}
+	return {
 		themeName: bundledRoyalLux.name,
 		availableVersion: bundledRoyalLux.version,
-		...(installedVersion ? { installedVersion } : {}),
 	};
 }
 
 /** Count of installed catalog themes with a newer bundled version available. */
 export async function countCatalogThemeUpdatesAvailable(app: App): Promise<number> {
-	const status = await getRoyalLuxThemeStatus(app);
-	if (!status.installedVersion) {
-		return 0;
+	let count = 0;
+	for (const entry of getThemeCatalogEntries()) {
+		if (!resolveBundledTheme(entry.id)) {
+			continue;
+		}
+		const status = await getCatalogThemeStatus(app, entry.id);
+		if (!status?.installedVersion) {
+			continue;
+		}
+		if (isUpdateAvailable(status.installedVersion, status.availableVersion)) {
+			count++;
+		}
 	}
-	return isUpdateAvailable(status.installedVersion, status.availableVersion)
-		? 1
-		: 0;
+	return count;
 }
 
 export async function installObsidianTheme(

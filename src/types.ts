@@ -97,6 +97,14 @@ export interface ThemeStatusInfo {
 	installedVersion?: string;
 }
 
+export interface ThemeUpdateInfo {
+	themeId: string;
+	themeName: string;
+	installedVersion: string;
+	latestVersion: string;
+	updateAvailable: boolean;
+}
+
 export interface PluginUpdateInfo {
 	pluginId: string;
 	installedVersion: string;

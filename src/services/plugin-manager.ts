@@ -1,6 +1,5 @@
 import { Notice, type App } from 'obsidian';
 import { isUpdateAvailable } from '../common/versioning';
-import { userHasPluginEntitlement } from '../common/entitlements';
 import type {
 	InstalledPluginInfo,
 	InstallResult,
@@ -91,18 +90,8 @@ export class PluginManager {
 		return installed.find((p) => p.pluginId === pluginId)?.installedVersion;
 	}
 
-	shouldShowCatalogEntry(
-		entry: PluginCatalogEntry,
-		installedIds: Set<string>,
-	): boolean {
-		const session = this.getSession();
-		if (installedIds.has(entry.id)) {
-			return true;
-		}
-		if (!session) {
-			return false;
-		}
-		return userHasPluginEntitlement(entry, session.grantedPluginIds);
+	shouldShowCatalogEntry(entry: PluginCatalogEntry): boolean {
+		return this.platform.hasPluginAccess(entry);
 	}
 
 	async installPlugin(
@@ -246,7 +235,7 @@ export class PluginManager {
 		}
 		new Notice(
 			updated > 0
-				? `Updated ${updated} plugin(s). Reload Obsidian if prompted.`
+				? `Updated ${updated} plugin(s). Reload Obsidian.`
 				: 'No plugins were updated.',
 		);
 	}
@@ -287,7 +276,7 @@ export class PluginManager {
 						? updatedNames[0]
 						: `${String(updatedNames.length)} catalog plugins`;
 				new Notice(
-					`${label} updated. Reload Obsidian if prompted.`,
+					`${label} updated. Reload Obsidian.`,
 				);
 			}
 		} catch {

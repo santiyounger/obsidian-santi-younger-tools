@@ -5,6 +5,7 @@ import { getCatalogEntries } from './services/catalog-data';
 import { getInstallVisibilityFlags } from './services/install-visibility';
 import { PlatformService } from './services/platform';
 import { PluginManager } from './services/plugin-manager';
+import { ThemeManager } from './services/theme-manager';
 import type { PluginDataState } from './types';
 import { openSantiToolsModal } from './ui/tools-modal';
 
@@ -12,6 +13,9 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 	data!: PluginDataState;
 	platform!: PlatformService;
 	manager!: PluginManager;
+	themeManager!: ThemeManager;
+	hasCatalogPluginAccess = false;
+	hasCatalogThemeAccess = false;
 	hasInstalledCatalogPlugins = false;
 	hasInstalledCatalogThemes = false;
 
@@ -28,6 +32,7 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 					delete this.data.platformSession;
 				}
 				await this.savePluginData();
+				void this.refreshInstallCommandVisibility();
 			},
 		);
 
@@ -39,6 +44,15 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 				this.data = state;
 				await this.savePluginData();
 			},
+			() => this.data.platformSession,
+			() => {
+				void this.refreshInstallCommandVisibility();
+			},
+		);
+
+		this.themeManager = new ThemeManager(
+			this.app,
+			this.platform,
 			() => this.data.platformSession,
 			() => {
 				void this.refreshInstallCommandVisibility();
@@ -75,12 +89,18 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 	}
 
 	async refreshInstallCommandVisibility(): Promise<void> {
-		const flags = await getInstallVisibilityFlags(this.app, this.manager);
+		const flags = await getInstallVisibilityFlags(
+			this.app,
+			this.manager,
+			this.platform,
+		);
+		this.hasCatalogPluginAccess = flags.hasCatalogPluginAccess;
+		this.hasCatalogThemeAccess = flags.hasCatalogThemeAccess;
 		this.hasInstalledCatalogPlugins = flags.hasInstalledCatalogPlugins;
 		this.hasInstalledCatalogThemes = flags.hasInstalledCatalogThemes;
 	}
 
-	/** After reload, refresh entitlements then install pending catalog plugin updates. */
+	/** After reload, refresh entitlements then install pending catalog updates. */
 	private scheduleCatalogAutoUpdateOnLoad(): void {
 		const timer = window.setTimeout(() => {
 			void (async () => {
@@ -90,6 +110,7 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 					/* keep last known grants */
 				}
 				await this.manager.applyPendingCatalogUpdatesOnLoad();
+				await this.themeManager.applyPendingCatalogThemeUpdatesOnLoad();
 				await this.refreshInstallCommandVisibility();
 			})();
 		}, 3000);

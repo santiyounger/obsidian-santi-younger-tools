@@ -1,5 +1,4 @@
 import { Notice } from 'obsidian';
-import { countCatalogThemeUpdatesAvailable } from '../services/theme-installer';
 import { openSantiToolsModal } from '../ui/tools-modal';
 import type SantiObsidianToolsPlugin from '../main';
 
@@ -47,7 +46,13 @@ export function registerCommands(plugin: SantiObsidianToolsPlugin): void {
 				return false;
 			}
 			if (!checking) {
-				void countCatalogThemeUpdatesAvailable(plugin.app).then((count) => {
+				if (!plugin.data.platformSession) {
+					new Notice('Sign in before checking for updates.');
+					openSantiToolsModal(plugin, { tab: 'themes' });
+					return true;
+				}
+				void plugin.themeManager.checkUpdates().then((updates) => {
+					const count = updates.filter((u) => u.updateAvailable).length;
 					new Notice(
 						count > 0
 							? `${count} theme update(s) available. Run Manage tools to install.`

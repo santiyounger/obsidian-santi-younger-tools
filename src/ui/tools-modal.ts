@@ -75,7 +75,9 @@ export class SantiToolsModal extends Modal {
 		this.getModalContainerEl().addClass('santi-tools-modal-container');
 		this.contentEl.empty();
 		if (!this.pendingPluginId) {
-			this.activeTab = this.isLoggedIn() ? 'plugins' : 'account';
+			this.activeTab = this.isLoggedIn()
+				? this.getDefaultCatalogTab()
+				: 'account';
 		} else if (!this.isLoggedIn()) {
 			this.activeTab = 'account';
 		}
@@ -91,6 +93,16 @@ export class SantiToolsModal extends Modal {
 
 	private isLoggedIn(): boolean {
 		return Boolean(this.plugin.data.platformSession);
+	}
+
+	private getDefaultCatalogTab(): ToolsTab {
+		if (this.plugin.platform.hasAnyPluginCatalogAccess()) {
+			return 'plugins';
+		}
+		if (this.plugin.platform.hasAnyThemeCatalogAccess()) {
+			return 'themes';
+		}
+		return 'account';
 	}
 
 	private async refreshUpdates(): Promise<void> {
@@ -257,19 +269,16 @@ export class SantiToolsModal extends Modal {
 			return;
 		}
 
-		const showThemesTab = await this.hasVisibleThemeCatalogEntries();
+		const showPluginsTab = this.plugin.platform.hasAnyPluginCatalogAccess();
+		const showThemesTab = this.plugin.platform.hasAnyThemeCatalogAccess();
 		if (this.activeTab === 'themes' && !showThemesTab) {
-			this.activeTab = 'plugins';
+			this.activeTab = showPluginsTab ? 'plugins' : 'account';
+		}
+		if (this.activeTab === 'plugins' && !showPluginsTab) {
+			this.activeTab = showThemesTab ? 'themes' : 'account';
 		}
 
-		contentEl.createEl('p', {
-			cls: 'santi-tools-intro',
-			text: showThemesTab
-				? 'Install and update catalog plugins and themes for your account.'
-				: 'Install and update catalog plugins for your account.',
-		});
-
-		this.renderTabs(contentEl, showThemesTab);
+		this.renderTabs(contentEl, showPluginsTab, showThemesTab);
 
 		const panelClass =
 			this.activeTab === 'account'
@@ -286,31 +295,18 @@ export class SantiToolsModal extends Modal {
 		}
 	}
 
-	private async hasVisibleThemeCatalogEntries(): Promise<boolean> {
-		for (const theme of getThemeCatalogEntries()) {
-			if (theme.id !== ROYAL_LUX_ENTITLEMENT_ID) {
-				continue;
-			}
-			const status = await getRoyalLuxThemeStatus(this.app);
-			const isInstalled = Boolean(status.installedVersion);
-			if (
-				this.plugin.platform.shouldShowThemeCatalogEntry(
-					theme.id,
-					isInstalled,
-				)
-			) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private renderTabs(parent: HTMLElement, showThemesTab: boolean): void {
+	private renderTabs(
+		parent: HTMLElement,
+		showPluginsTab: boolean,
+		showThemesTab: boolean,
+	): void {
 		const tabs = parent.createDiv({
 			cls: 'horizontal-tab-header santi-tools-tab-header',
 			attr: { role: 'tablist' },
 		});
-		this.renderTabButton(tabs, 'plugins', 'Plugins');
+		if (showPluginsTab) {
+			this.renderTabButton(tabs, 'plugins', 'Plugins');
+		}
 		if (showThemesTab) {
 			this.renderTabButton(tabs, 'themes', 'Themes');
 		}
@@ -394,13 +390,12 @@ export class SantiToolsModal extends Modal {
 
 		const grid = parent.createDiv({ cls: 'santi-catalog-grid' });
 		const installed = await this.plugin.manager.listInstalled();
-		const installedIds = new Set(installed.map((p) => p.pluginId));
 		const catalog = getCatalogEntries();
 		let visibleCount = 0;
 		this.focusCardEl = undefined;
 
 		for (const entry of catalog) {
-			if (!this.plugin.manager.shouldShowCatalogEntry(entry, installedIds)) {
+			if (!this.plugin.manager.shouldShowCatalogEntry(entry)) {
 				continue;
 			}
 			const isComingSoon = isComingSoonCatalogPlugin(entry);
@@ -573,16 +568,10 @@ export class SantiToolsModal extends Modal {
 			if (theme.id !== ROYAL_LUX_ENTITLEMENT_ID) {
 				continue;
 			}
-			const status = await getRoyalLuxThemeStatus(this.app);
-			const isInstalled = Boolean(status.installedVersion);
-			if (
-				!this.plugin.platform.shouldShowThemeCatalogEntry(
-					theme.id,
-					isInstalled,
-				)
-			) {
+			if (!this.plugin.platform.shouldShowThemeCatalogEntry(theme.id)) {
 				continue;
 			}
+			const status = await getRoyalLuxThemeStatus(this.app);
 			await this.renderRoyalLuxThemeCard(grid, theme, status);
 		}
 	}
@@ -723,7 +712,7 @@ export class SantiToolsModal extends Modal {
 		if (result.success) {
 			this.hasSentLoginCode = false;
 			this.codeInput = '';
-			this.activeTab = 'plugins';
+			this.activeTab = this.getDefaultCatalogTab();
 			await this.refreshUpdates();
 			this.showNotice(result.message);
 		} else {
