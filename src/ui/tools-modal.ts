@@ -34,7 +34,8 @@ import type {
 	ThemeStatusInfo,
 	ThemeUpdateInfo,
 } from '../types';
-import { applyDevEmailBlur } from './dev-email-blur';
+import { createEmailPrivacyRow } from './email-privacy-row';
+import { wireEmailPrivacyExtraButton } from './email-privacy-toggle';
 import {
 	promptCatalogPluginUpdatesIfNeeded,
 	promptCatalogThemeUpdatesIfNeeded,
@@ -63,6 +64,9 @@ export class SantiToolsModal extends Modal {
 	private hasSentLoginCode = false;
 	private updates: PluginUpdateInfo[] = [];
 	private themeUpdates: ThemeUpdateInfo[] = [];
+	private signInEmailHidden = false;
+	private accountWelcomeEmailHidden = false;
+	private accountEmailLineHidden = false;
 
 	constructor(
 		private plugin: SantiObsidianToolsPlugin,
@@ -931,13 +935,17 @@ export class SantiToolsModal extends Modal {
 				.setDisabled(!this.emailInput.trim() || this.isBusy());
 		};
 
-		new Setting(parent)
+		let syncSignInEmailPrivacy: (() => void) | undefined;
+		const signInEmailPrivacyState = {
+			hidden: this.signInEmailHidden,
+		};
+
+		const emailSetting = new Setting(parent)
 			.setName('Email')
 			.setDesc('Same address as your purchase.')
 			.addText((text) => {
 				text.inputEl.addClass('santi-tools-sign-in-input');
 				text.setDisabled(this.isBusy());
-				applyDevEmailBlur(text.inputEl);
 				text
 					.setPlaceholder('you@example.com')
 					.setValue(this.emailInput)
@@ -951,10 +959,26 @@ export class SantiToolsModal extends Modal {
 							this.codeInput = '';
 						}
 						this.emailInput = value;
-						applyDevEmailBlur(text.inputEl);
+						syncSignInEmailPrivacy?.();
 						syncSendLoginButton();
 					});
 			});
+
+		emailSetting.addExtraButton((button) => {
+			const inputEl = emailSetting.controlEl.querySelector('input');
+			if (!(inputEl instanceof HTMLInputElement)) {
+				return;
+			}
+			syncSignInEmailPrivacy = wireEmailPrivacyExtraButton(
+				button,
+				inputEl,
+				signInEmailPrivacyState,
+				() => Boolean(this.emailInput.trim()),
+				(hidden) => {
+					this.signInEmailHidden = hidden;
+				},
+			);
+		});
 
 		if (!this.hasSentLoginCode) {
 			new Setting(parent).addButton((button) => {
@@ -1020,20 +1044,44 @@ export class SantiToolsModal extends Modal {
 		}
 
 		const welcome = connection.displayName || connection.email || 'there';
-		const heading = parent.createEl('h2', {
-			cls: 'santi-tools-account-heading',
-			text: `Welcome, ${welcome}`,
-		});
+
 		if (connection.email && welcome === connection.email) {
-			applyDevEmailBlur(heading);
+			const welcomeEmailState = { hidden: this.accountWelcomeEmailHidden };
+			createEmailPrivacyRow(parent, {
+				rowClass: 'santi-email-privacy-row--account-heading',
+				state: welcomeEmailState,
+				onHiddenChange: (hidden) => {
+					this.accountWelcomeEmailHidden = hidden;
+				},
+				renderEmail: (targetParent) => {
+					const heading = targetParent.createEl('h2', {
+						cls: 'santi-tools-account-heading',
+					});
+					heading.appendText('Welcome, ');
+					const emailSpan = heading.createSpan({ text: connection.email });
+					return emailSpan;
+				},
+			});
+		} else {
+			parent.createEl('h2', {
+				cls: 'santi-tools-account-heading',
+				text: `Welcome, ${welcome}`,
+			});
 		}
 
 		if (connection.email) {
-			const emailLine = parent.createEl('p', {
-				cls: 'santi-tools-sign-in-desc',
-				text: connection.email,
+			const emailLineState = { hidden: this.accountEmailLineHidden };
+			createEmailPrivacyRow(parent, {
+				state: emailLineState,
+				onHiddenChange: (hidden) => {
+					this.accountEmailLineHidden = hidden;
+				},
+				renderEmail: (targetParent) =>
+					targetParent.createEl('p', {
+						cls: 'santi-tools-sign-in-desc',
+						text: connection.email,
+					}),
 			});
-			applyDevEmailBlur(emailLine);
 		}
 		if (connection.lastSyncedAt) {
 			parent.createEl('p', {
