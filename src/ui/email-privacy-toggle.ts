@@ -5,6 +5,21 @@ export interface EmailPrivacyHiddenState {
 	hidden: boolean;
 }
 
+export interface FieldPrivacyLabels {
+	show: string;
+	hide: string;
+}
+
+export const FIELD_PRIVACY_EMAIL_LABELS: FieldPrivacyLabels = {
+	show: 'Show email',
+	hide: 'Hide email',
+};
+
+export const FIELD_PRIVACY_CODE_LABELS: FieldPrivacyLabels = {
+	show: 'Show code',
+	hide: 'Hide code',
+};
+
 export function syncEmailPrivacyTarget(
 	emailEl: HTMLElement,
 	hidden: boolean,
@@ -28,9 +43,10 @@ function syncToggleButtonIcon(
 function syncExtraButtonIcon(
 	button: ExtraButtonComponent,
 	hidden: boolean,
+	labels: FieldPrivacyLabels,
 ): void {
 	button.setIcon(hidden ? 'eye-off' : 'eye');
-	button.setTooltip(hidden ? 'Show email' : 'Hide email');
+	button.setTooltip(hidden ? labels.show : labels.hide);
 }
 
 export function appendEmailPrivacyToggle(
@@ -61,32 +77,19 @@ export function appendEmailPrivacyToggle(
 
 export function wireEmailPrivacyExtraButton(
 	button: ExtraButtonComponent,
-	emailEl: HTMLElement,
+	targetEl: HTMLElement,
 	state: EmailPrivacyHiddenState,
-	hasEmail: () => boolean,
 	onHiddenChange?: (hidden: boolean) => void,
+	labels: FieldPrivacyLabels = FIELD_PRIVACY_EMAIL_LABELS,
 ): () => void {
 	button.extraSettingsEl.addClass('santi-email-privacy-toggle');
 
 	const sync = (): void => {
-		if (!hasEmail()) {
-			button.extraSettingsEl.addClass('santi-email-privacy-toggle--inactive');
-			if (state.hidden) {
-				state.hidden = false;
-				onHiddenChange?.(false);
-			}
-			syncEmailPrivacyTarget(emailEl, false);
-			return;
-		}
-		button.extraSettingsEl.removeClass('santi-email-privacy-toggle--inactive');
-		syncEmailPrivacyTarget(emailEl, state.hidden);
-		syncExtraButtonIcon(button, state.hidden);
+		syncEmailPrivacyTarget(targetEl, state.hidden);
+		syncExtraButtonIcon(button, state.hidden, labels);
 	};
 
 	button.onClick(() => {
-		if (!hasEmail()) {
-			return;
-		}
 		state.hidden = !state.hidden;
 		onHiddenChange?.(state.hidden);
 		sync();

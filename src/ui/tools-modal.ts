@@ -35,7 +35,11 @@ import type {
 	ThemeUpdateInfo,
 } from '../types';
 import { createEmailPrivacyRow } from './email-privacy-row';
-import { wireEmailPrivacyExtraButton } from './email-privacy-toggle';
+import {
+	FIELD_PRIVACY_CODE_LABELS,
+	FIELD_PRIVACY_EMAIL_LABELS,
+	wireEmailPrivacyExtraButton,
+} from './email-privacy-toggle';
 import {
 	promptCatalogPluginUpdatesIfNeeded,
 	promptCatalogThemeUpdatesIfNeeded,
@@ -65,6 +69,7 @@ export class SantiToolsModal extends Modal {
 	private updates: PluginUpdateInfo[] = [];
 	private themeUpdates: ThemeUpdateInfo[] = [];
 	private signInEmailHidden = false;
+	private signInCodeHidden = false;
 	private accountWelcomeEmailHidden = false;
 	private accountEmailLineHidden = false;
 
@@ -973,10 +978,10 @@ export class SantiToolsModal extends Modal {
 				button,
 				inputEl,
 				signInEmailPrivacyState,
-				() => Boolean(this.emailInput.trim()),
 				(hidden) => {
 					this.signInEmailHidden = hidden;
 				},
+				FIELD_PRIVACY_EMAIL_LABELS,
 			);
 		});
 
@@ -1005,7 +1010,12 @@ export class SantiToolsModal extends Modal {
 				attr: { 'aria-live': 'polite' },
 			});
 
-			new Setting(parent)
+			let syncSignInCodePrivacy: (() => void) | undefined;
+			const signInCodePrivacyState = {
+				hidden: this.signInCodeHidden,
+			};
+
+			const codeSetting = new Setting(parent)
 				.setName('6-digit code')
 				.addText((text) => {
 					text.inputEl.addClass('santi-tools-sign-in-input');
@@ -1015,6 +1025,7 @@ export class SantiToolsModal extends Modal {
 						.setValue(this.codeInput)
 						.onChange((value) => {
 							this.codeInput = value;
+							syncSignInCodePrivacy?.();
 							if (/^\d{6}$/.test(value.trim())) {
 								void this.runBusy('sign-in-verify', () =>
 								this.verifyLoginCode(),
@@ -1022,6 +1033,22 @@ export class SantiToolsModal extends Modal {
 							}
 						});
 				});
+
+			codeSetting.addExtraButton((button) => {
+				const inputEl = codeSetting.controlEl.querySelector('input');
+				if (!(inputEl instanceof HTMLInputElement)) {
+					return;
+				}
+				syncSignInCodePrivacy = wireEmailPrivacyExtraButton(
+					button,
+					inputEl,
+					signInCodePrivacyState,
+					(hidden) => {
+						this.signInCodeHidden = hidden;
+					},
+					FIELD_PRIVACY_CODE_LABELS,
+				);
+			});
 
 			this.appendSignInContactLink(parent);
 		}

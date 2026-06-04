@@ -458,10 +458,6 @@
 	height: var(--icon-m);
 }
 
-.santi-email-privacy-toggle--inactive {
-	display: none;
-}
-
 .santi-email-privacy-blur {
 	filter: blur(6px);
 	user-select: none;
