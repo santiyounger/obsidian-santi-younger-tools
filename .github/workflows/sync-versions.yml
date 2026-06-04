@@ -10,54 +10,61 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - name: Checkout
+      - name: Checkout default branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.repository.default_branch }}
 
-      - name: Build versions.json from releases
-        id: build
+      - name: Build and write versions.json from releases
         uses: actions/github-script@v7
         with:
-          result-encoding: string
           script: |
+            const fs = require('fs');
             const { owner, repo } = context.repo;
-            // List all releases (excludes deleted)
-            const releases = await github.paginate(github.rest.repos.listReleases, { owner, repo, per_page: 100 });
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner,
+              repo,
+              per_page: 100,
+            });
             const map = {};
             for (const rel of releases) {
               const tag = rel.tag_name;
               if (!tag) continue;
               try {
-                const file = await github.rest.repos.getContent({ owner, repo, path: 'manifest.json', ref: tag });
+                const file = await github.rest.repos.getContent({
+                  owner,
+                  repo,
+                  path: 'manifest.json',
+                  ref: tag,
+                });
                 const content = Buffer.from(file.data.content, 'base64').toString('utf8');
                 const manifest = JSON.parse(content);
-                if (manifest && manifest.minAppVersion && manifest.version) {
+                if (manifest?.minAppVersion && manifest?.version) {
                   map[manifest.version] = manifest.minAppVersion;
                 }
-              } catch (e) {
-                // Skip tags without manifest.json
+              } catch {
                 continue;
               }
             }
-            // Stable order by semver-ish compare
-            const keys = Object.keys(map).sort((a,b)=>{
-              const pa=a.split('.').map(n=>parseInt(n,10));
-              const pb=b.split('.').map(n=>parseInt(n,10));
-              for (let i=0;i<3;i++){ if((pa[i]||0)!==(pb[i]||0)) return (pa[i]||0)-(pb[i]||0); }
+            const keys = Object.keys(map).sort((a, b) => {
+              const pa = a.split('.').map((n) => parseInt(n, 10));
+              const pb = b.split('.').map((n) => parseInt(n, 10));
+              for (let i = 0; i < 3; i++) {
+                if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
+              }
               return 0;
             });
             const ordered = {};
             for (const k of keys) ordered[k] = map[k];
-            return JSON.stringify(ordered, null, '\t') + '\n';
-
-      - name: Write versions.json
-        run: |
-          printf "%s" '${{ steps.build.outputs.result }}' > versions.json
+            fs.writeFileSync('versions.json', `${JSON.stringify(ordered, null, '\t')}\n`);
 
       - name: Commit and push if changed
         run: |
+          BRANCH='${{ github.event.repository.default_branch }}'
           if git diff --quiet -- versions.json; then
             echo "No changes to versions.json";
             exit 0;
@@ -66,4 +73,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add versions.json
           git commit -m "chore: sync versions.json with releases [skip ci]"
-          git push
+          git push origin "HEAD:${BRANCH}"
