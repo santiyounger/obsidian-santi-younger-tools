@@ -1,7 +1,7 @@
 {
 	"id": "santi-younger-tools",
 	"name": "Santi Younger Tools",
-	"version": "1.0.14",
+	"version": "1.0.15",
 	"minAppVersion": "1.11.4",
 	"description": "Install and update purchased Santi Younger plugins and themes after signing in with a one-time email code.",
 	"author": "Santi Younger",
