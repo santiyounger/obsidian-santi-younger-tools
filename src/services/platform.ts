@@ -3,6 +3,9 @@ import {
 	userHasPluginEntitlement,
 	userHasThemeEntitlement,
 } from '../common/entitlements';
+import {
+	SEND_LOGIN_CODE_NO_PURCHASE_MESSAGE,
+} from '../constants';
 import { DEFAULT_PLATFORM_BASE_URL } from '../common/default-platform-url';
 import { buildPlatformApiHeaders } from '../common/platform-fetch-headers';
 import { parseAllPluginListIdsFromInstallerAccessPayload } from '../common/parseGrantedPluginIdsFromApiPayload';
@@ -22,6 +25,16 @@ import {
 	parseDisplayNameFromPayload,
 	pickFirstTokenField,
 } from './http';
+
+function mapSendMagicLinkError(message: string | undefined): string {
+	if (!message) {
+		return 'Failed to send login code.';
+	}
+	if (/not registered as a buyer/i.test(message)) {
+		return SEND_LOGIN_CODE_NO_PURCHASE_MESSAGE;
+	}
+	return message;
+}
 
 export class PlatformService {
 	constructor(
@@ -145,7 +158,7 @@ export class PlatformService {
 			isAdminLogin?: boolean;
 		};
 		if (!response.ok || !body.success) {
-			throw new Error(body.message ?? 'Failed to send login code.');
+			throw new Error(mapSendMagicLinkError(body.message));
 		}
 		if (body.isAdminLogin) {
 			throw new Error(
