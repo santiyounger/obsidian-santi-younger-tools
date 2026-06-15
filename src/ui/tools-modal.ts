@@ -10,6 +10,7 @@ import {
 	APP_DISPLAY_NAME,
 	SANTI_CONTACT_URL,
 	SANTI_TESTIMONIAL_URL,
+	SEND_LOGIN_CODE_NO_PURCHASE_MESSAGE,
 } from '../constants';
 import { ROYAL_LUX_ENTITLEMENT_ID } from '../common/entitlements';
 import type SantiObsidianToolsPlugin from '../main';
@@ -882,14 +883,36 @@ export class SantiToolsModal extends Modal {
 		menu.showAtMouseEvent(event);
 	}
 
-	private appendSignInContactLink(parent: HTMLElement): void {
-		const help = parent.createDiv({ cls: 'santi-tools-sign-in-help' });
-		help.appendText("You didn't receive the code. Please ");
-		const contactLink = help.createEl('a', { href: SANTI_CONTACT_URL });
+	private appendSignInSupportMessage(parent: HTMLElement, cls: string): void {
+		const contactPhrase = 'contact me';
+		const phraseIndex = SEND_LOGIN_CODE_NO_PURCHASE_MESSAGE.toLowerCase().indexOf(
+			contactPhrase,
+		);
+		if (phraseIndex === -1) {
+			parent.createEl('p', {
+				cls,
+				text: SEND_LOGIN_CODE_NO_PURCHASE_MESSAGE,
+			});
+			return;
+		}
+
+		const desc = parent.createDiv({ cls });
+		desc.appendText(
+			SEND_LOGIN_CODE_NO_PURCHASE_MESSAGE.slice(0, phraseIndex),
+		);
+		const contactLink = desc.createEl('a', { href: SANTI_CONTACT_URL });
 		contactLink.setText('Contact me');
 		contactLink.setAttr('target', '_blank');
 		contactLink.setAttr('rel', 'noopener noreferrer');
-		help.appendText('.');
+		desc.appendText(
+			SEND_LOGIN_CODE_NO_PURCHASE_MESSAGE.slice(
+				phraseIndex + contactPhrase.length,
+			),
+		);
+	}
+
+	private appendSignInContactLink(parent: HTMLElement): void {
+		this.appendSignInSupportMessage(parent, 'santi-tools-sign-in-help');
 	}
 
 	private async verifyLoginCode(): Promise<void> {
@@ -917,16 +940,7 @@ export class SantiToolsModal extends Modal {
 		});
 
 		if (!this.hasSentLoginCode) {
-			const desc = parent.createDiv({ cls: 'santi-tools-sign-in-desc' });
-			desc.appendText(
-				'If the code never arrives, there may have been a typo in your order or an issue on our side. Visit ',
-			);
-			const contactLink = desc.createEl('a', { href: SANTI_CONTACT_URL });
-			// eslint-disable-next-line obsidianmd/ui/sentence-case -- display URL as link label
-			contactLink.setText('santiyounger.com/contact');
-			contactLink.setAttr('target', '_blank');
-			contactLink.setAttr('rel', 'noopener noreferrer');
-			desc.appendText(' for help.');
+			this.appendSignInSupportMessage(parent, 'santi-tools-sign-in-desc');
 		}
 
 		let sendLoginButton: ButtonComponent | undefined;
