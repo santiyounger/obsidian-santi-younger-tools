@@ -60,9 +60,17 @@ async function renamePath(
 	);
 }
 
-async function sleep(ms: number): Promise<void> {
-	await new Promise<void>((resolve) => {
-		window.setTimeout(() => resolve(), ms);
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+	return new Promise<void>((resolve) => {
+		if (signal?.aborted) {
+			resolve();
+			return;
+		}
+		const id = window.setTimeout(() => resolve(), ms);
+		signal?.addEventListener('abort', () => {
+			window.clearTimeout(id);
+			resolve();
+		}, { once: true });
 	});
 }
 
@@ -151,7 +159,7 @@ export async function resolvePluginDirectoryForCatalogId(
 	}
 
 	for (const folder of folders) {
-		const dir = normalizePath(`${pluginsPath}/${folder}`);
+		const dir = normalizePath(folder);
 		if (dir === directPath) {
 			continue;
 		}

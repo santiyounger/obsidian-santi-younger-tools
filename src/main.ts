@@ -106,21 +106,33 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 		await this.refreshInstallCommandVisibility();
 	}
 
+	private autoUpdateRunning = false;
+
 	/** After reload, refresh entitlements then install pending catalog updates. */
 	private scheduleCatalogAutoUpdateOnLoad(): void {
 		const timer = window.setTimeout(() => {
-			void (async () => {
-				try {
-					await this.platform.refreshEntitlements();
-				} catch {
-					/* keep last known grants */
-				}
-				await this.manager.applyPendingCatalogUpdatesOnLoad();
-				await this.themeManager.applyPendingCatalogThemeUpdatesOnLoad();
-				await this.refreshInstallCommandVisibility();
-			})();
+			void this.runCatalogAutoUpdate();
 		}, 3000);
 		this.register(() => window.clearTimeout(timer));
+	}
+
+	async runCatalogAutoUpdate(): Promise<void> {
+		if (this.autoUpdateRunning) {
+			return;
+		}
+		this.autoUpdateRunning = true;
+		try {
+			try {
+				await this.platform.refreshEntitlements();
+			} catch {
+				/* keep last known grants */
+			}
+			await this.manager.applyPendingCatalogUpdatesOnLoad();
+			await this.themeManager.applyPendingCatalogThemeUpdatesOnLoad();
+			await this.refreshInstallCommandVisibility();
+		} finally {
+			this.autoUpdateRunning = false;
+		}
 	}
 
 	onunload(): void {}
