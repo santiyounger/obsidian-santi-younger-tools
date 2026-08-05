@@ -1,4 +1,4 @@
-import { normalizePath, type App } from 'obsidian';
+import { apiVersion, normalizePath, requireApiVersion, type App } from 'obsidian';
 import type { InstallResult, PluginReleaseAssets } from '../types';
 import { getCommunityPluginsPath, getPluginsPath } from './vault-paths';
 
@@ -186,9 +186,28 @@ export async function installOrUpdatePlugin(
 	const manifest = JSON.parse(release.manifestJson) as {
 		id: string;
 		version: string;
+		minAppVersion?: string;
 	};
 	if (!manifest.id || !manifest.version) {
 		throw new Error('Invalid plugin manifest.');
+	}
+
+	// Refuse a release the running Obsidian is too old to load, before anything
+	// touches disk — otherwise the install "succeeds" and the plugin fails to
+	// start with no explanation. Only well-formed version strings are enforced
+	// so an odd manifest value can never block an otherwise valid install.
+	const minAppVersion = manifest.minAppVersion?.trim();
+	if (
+		minAppVersion &&
+		/^\d+(\.\d+)*$/.test(minAppVersion) &&
+		!requireApiVersion(minAppVersion)
+	) {
+		return {
+			pluginId: manifest.id,
+			version: manifest.version,
+			success: false,
+			message: `Version ${manifest.version} needs Obsidian ${minAppVersion} or newer, and this vault is running ${apiVersion}. Update Obsidian, then install again.`,
+		};
 	}
 
 	const pluginsPath = getPluginsPath(app);
