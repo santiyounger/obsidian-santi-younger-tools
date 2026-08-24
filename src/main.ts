@@ -8,6 +8,7 @@ import { PluginManager } from './services/plugin-manager';
 import { ThemeManager } from './services/theme-manager';
 import type { PluginDataState } from './types';
 import { openSantiToolsModal } from './ui/tools-modal';
+import { SantiToolsSettingTab } from './ui/settings-tab';
 
 export default class SantiObsidianToolsPlugin extends Plugin {
 	data!: PluginDataState;
@@ -60,6 +61,8 @@ export default class SantiObsidianToolsPlugin extends Plugin {
 		);
 
 		registerCommands(this);
+
+		this.addSettingTab(new SantiToolsSettingTab(this));
 
 		this.addRibbonIcon('package', 'Manage tools', () => {
 			openSantiToolsModal(this);
