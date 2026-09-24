@@ -2,7 +2,13 @@ import { PluginSettingTab, Setting } from 'obsidian';
 import { openSantiToolsModal } from './tools-modal';
 import type SantiObsidianToolsPlugin from '../main';
 
-/** Settings entry that redirects to the Manage tools modal. */
+/**
+ * Settings entry that links to the Manage tools modal.
+ *
+ * Never close settings or open the modal from display(): Obsidian reopens the
+ * last viewed tab when the settings button is clicked, so an automatic redirect
+ * would hijack the settings button until reload.
+ */
 export class SantiToolsSettingTab extends PluginSettingTab {
 	private readonly toolsPlugin: SantiObsidianToolsPlugin;
 
@@ -15,7 +21,6 @@ export class SantiToolsSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		// Fallback UI in case the settings window cannot be closed automatically.
 		new Setting(containerEl)
 			.setName('Manage tools')
 			.setDesc('Everything is managed from the tools window.')
@@ -28,9 +33,6 @@ export class SantiToolsSettingTab extends PluginSettingTab {
 						openSantiToolsModal(this.toolsPlugin);
 					}),
 			);
-
-		this.closeSettings();
-		openSantiToolsModal(this.toolsPlugin);
 	}
 
 	private closeSettings(): void {
