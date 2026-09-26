@@ -156,13 +156,13 @@ jobs:
             manifest.json
             styles.css
 
-      - name: Create GitHub release and upload assets (draft)
+      - name: Create GitHub release and upload assets (published, never draft: Obsidian ignores drafts)
         if: steps.vercmp.outputs.should_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.version }}
           name: Santi Younger Tools ${{ steps.ver.outputs.version }}
-          draft: true
+          draft: false
           prerelease: false
           body: ${{ steps.notes.outputs.result }}
           files: |
