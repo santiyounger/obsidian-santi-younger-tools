@@ -156,7 +156,7 @@ jobs:
             manifest.json
             styles.css
 
-      - name: Create GitHub release and upload assets (published, never draft: Obsidian ignores drafts)
+      - name: Create GitHub release and upload assets (published, never draft, since Obsidian ignores drafts)
         if: steps.vercmp.outputs.should_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
