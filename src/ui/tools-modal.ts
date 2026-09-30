@@ -67,6 +67,8 @@ export class SantiToolsModal extends Modal {
 	private emailInput = '';
 	private codeInput = '';
 	private hasSentLoginCode = false;
+	/** Why the last "Send login code" failed, shown under the email field. */
+	private signInError: string | null = null;
 	private updates: PluginUpdateInfo[] = [];
 	private themeUpdates: ThemeUpdateInfo[] = [];
 	private signInEmailHidden = false;
@@ -883,36 +885,60 @@ export class SantiToolsModal extends Modal {
 		menu.showAtMouseEvent(event);
 	}
 
-	private appendSignInSupportMessage(parent: HTMLElement, cls: string): void {
+	/** Renders `text`, turning its first "contact me" into a link to the contact page. */
+	private appendTextWithContactLink(
+		parent: HTMLElement,
+		cls: string,
+		text: string,
+	): HTMLElement {
 		const contactPhrase = 'contact me';
-		const phraseIndex = SEND_LOGIN_CODE_NO_PURCHASE_MESSAGE.toLowerCase().indexOf(
-			contactPhrase,
-		);
+		const phraseIndex = text.toLowerCase().indexOf(contactPhrase);
+		const desc = parent.createDiv({ cls });
 		if (phraseIndex === -1) {
-			parent.createEl('p', {
-				cls,
-				text: SEND_LOGIN_CODE_NO_PURCHASE_MESSAGE,
-			});
-			return;
+			desc.setText(text);
+			return desc;
 		}
 
-		const desc = parent.createDiv({ cls });
-		desc.appendText(
-			SEND_LOGIN_CODE_NO_PURCHASE_MESSAGE.slice(0, phraseIndex),
-		);
+		desc.appendText(text.slice(0, phraseIndex));
 		const contactLink = desc.createEl('a', { href: SANTI_CONTACT_URL });
-		contactLink.setText('Contact me');
+		contactLink.setText(text.slice(phraseIndex, phraseIndex + contactPhrase.length));
 		contactLink.setAttr('target', '_blank');
 		contactLink.setAttr('rel', 'noopener noreferrer');
-		desc.appendText(
-			SEND_LOGIN_CODE_NO_PURCHASE_MESSAGE.slice(
-				phraseIndex + contactPhrase.length,
-			),
-		);
+		desc.appendText(text.slice(phraseIndex + contactPhrase.length));
+		return desc;
 	}
 
-	private appendSignInContactLink(parent: HTMLElement): void {
-		this.appendSignInSupportMessage(parent, 'santi-tools-sign-in-help');
+	private appendSignInError(parent: HTMLElement, message: string): void {
+		const text =
+			message === SEND_LOGIN_CODE_NO_PURCHASE_MESSAGE ||
+			/contact me/i.test(message)
+				? message
+				: `${message} If it keeps happening, contact me and I'll sort it out.`;
+		const errorEl = this.appendTextWithContactLink(
+			parent,
+			'santi-tools-sign-in-error',
+			text,
+		);
+		errorEl.setAttr('role', 'alert');
+	}
+
+	private async sendLoginCode(email: string, isResend: boolean): Promise<void> {
+		try {
+			await this.plugin.platform.sendMagicLink(email);
+		} catch (error) {
+			this.signInError =
+				error instanceof Error ? error.message : String(error);
+			this.hasSentLoginCode = false;
+			return;
+		}
+		this.signInError = null;
+		this.hasSentLoginCode = true;
+		this.codeInput = '';
+		this.showNotice(
+			isResend
+				? 'New code sent. Use the newest email, older codes stop working.'
+				: 'Code sent. Check your email.',
+		);
 	}
 
 	private async verifyLoginCode(): Promise<void> {
@@ -938,10 +964,6 @@ export class SantiToolsModal extends Modal {
 			cls: 'santi-tools-intro',
 			text: 'Sign in with the email you used for your purchase to install catalog plugins.',
 		});
-
-		if (!this.hasSentLoginCode) {
-			this.appendSignInSupportMessage(parent, 'santi-tools-sign-in-desc');
-		}
 
 		let sendLoginButton: ButtonComponent | undefined;
 
@@ -976,6 +998,7 @@ export class SantiToolsModal extends Modal {
 						) {
 							this.hasSentLoginCode = false;
 							this.codeInput = '';
+							this.signInError = null;
 						}
 						this.emailInput = value;
 						syncSignInEmailPrivacy?.();
@@ -1000,6 +1023,10 @@ export class SantiToolsModal extends Modal {
 		});
 
 		if (!this.hasSentLoginCode) {
+			if (this.signInError) {
+				this.appendSignInError(parent, this.signInError);
+			}
+
 			new Setting(parent).addButton((button) => {
 				sendLoginButton = button;
 				syncSendLoginButton();
@@ -1008,19 +1035,17 @@ export class SantiToolsModal extends Modal {
 					if (!email) {
 						return;
 					}
-					void this.runBusy('sign-in-send', async () => {
-						const result = await this.plugin.platform.sendMagicLink(email);
-						this.hasSentLoginCode = true;
-						this.showNotice(result.message, !result.success);
-					});
+					void this.runBusy('sign-in-send', () =>
+						this.sendLoginCode(email, false),
+					);
 				});
 			});
 		}
 
 		if (this.hasSentLoginCode) {
 			parent.createEl('p', {
-				cls: 'santi-tools-sign-in-desc',
-				text: 'Enter the 6-digit code from your email.',
+				cls: 'santi-tools-sign-in-sent',
+				text: `I sent a 6-digit code to ${this.emailInput.trim()}. It can take a minute to arrive. If you don't see it, check your spam or junk folder.`,
 				attr: { 'aria-live': 'polite' },
 			});
 
@@ -1064,7 +1089,38 @@ export class SantiToolsModal extends Modal {
 				);
 			});
 
-			this.appendSignInContactLink(parent);
+			new Setting(parent)
+				.addButton((button) => {
+					button
+						.setButtonText('Send a new code')
+						.setDisabled(this.isBusy())
+						.onClick(() => {
+							const email = this.emailInput.trim();
+							if (!email) {
+								return;
+							}
+							void this.runBusy('sign-in-send', () =>
+								this.sendLoginCode(email, true),
+							);
+						});
+				})
+				.addButton((button) => {
+					button
+						.setButtonText('Use a different email')
+						.setDisabled(this.isBusy())
+						.onClick(() => {
+							this.hasSentLoginCode = false;
+							this.codeInput = '';
+							this.signInError = null;
+							void this.render();
+						});
+				});
+
+			this.appendTextWithContactLink(
+				parent,
+				'santi-tools-sign-in-help',
+				"Still no email after a few minutes? Contact me and I'll sort it out.",
+			);
 		}
 
 		this.maybeRenderPanelBusyOverlay(

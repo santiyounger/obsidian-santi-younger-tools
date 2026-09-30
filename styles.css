@@ -96,6 +96,22 @@
 	line-height: var(--line-height-normal);
 }
 
+.santi-tools-sign-in-sent {
+	margin: 0 0 var(--size-4-2);
+	color: var(--text-normal);
+	line-height: var(--line-height-normal);
+}
+
+.santi-tools-sign-in-error {
+	margin: var(--size-4-2) 0;
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-s);
+	background-color: rgba(var(--color-red-rgb), 0.1);
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+	line-height: var(--line-height-normal);
+}
+
 /* Catalog tabs: use the full modal width */
 .santi-tools-panel--catalog {
 	display: flex;
