@@ -194,10 +194,12 @@ export class PlatformService {
 					'Could not verify login code.',
 			);
 		}
+		// Prefer the token in the body: Obsidian mobile may drop or mangle
+		// Set-Cookie, and the server also sends cookie-clearing entries.
 		const tokenFromBody = pickFirstTokenField(body);
-		const authCookie =
-			cookieFromHeaders ??
-			(tokenFromBody ? `auth-token=${tokenFromBody}` : null);
+		const authCookie = tokenFromBody
+			? `auth-token=${tokenFromBody}`
+			: cookieFromHeaders;
 		if (!authCookie) {
 			throw new Error(
 				'Login succeeded but no session token was returned. Try signing in on the website, then refresh access here.',
