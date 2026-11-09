@@ -1,6 +1,6 @@
 {
 	"name": "santi-younger-tools",
-	"version": "1.0.17",
+	"version": "1.0.25",
 	"description": "Install and manage Santi Younger catalog plugins and themes.",
 	"main": "main.js",
 	"type": "module",
